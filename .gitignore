@@ -1,0 +1,5 @@
+.claude-flow/
+.swarm/
+*.db
+node_modules/
+.env

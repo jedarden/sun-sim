@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sun Simulator - Interactive Sun Path Tracker</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 0.75rem 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        #current-time-display {
+            font-size: 1rem;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        /* Main content */
+        #main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Map container */
+        #map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sun path canvas overlay */
+        #sun-path-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 400;
+        }
+
+        /* Control panel */
+        #control-panel {
+            width: 320px;
+            background: #16213e;
+            padding: 1rem;
+            overflow-y: auto;
+            box-shadow: -2px 0 8px rgba(0,0,0,0.3);
+        }
+
+        .control-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-section h3 {
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            color: #667eea;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Timeline control */
+        #timeline-container {
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        #timeline-canvas {
+            width: 100%;
+            height: 60px;
+            border-radius: 8px;
+            cursor: grab;
+            touch-action: none;
+        }
+
+        #timeline-canvas:active {
+            cursor: grabbing;
+        }
+
+        .time-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-top: 0.25rem;
+        }
+
+        /* Date navigation buttons */
+        .nav-btn {
+            padding: 0.4rem 0.6rem;
+            background: #0f3460;
+            border: 1px solid #667eea;
+            border-radius: 4px;
+            color: #eee;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 35px;
+        }
+
+        .nav-btn:hover {
+            background: #667eea;
+            border-color: #764ba2;
+            transform: translateY(-1px);
+        }
+
+        .nav-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Date shortcuts */
+        .date-shortcuts {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .shortcut-btn {
+            padding: 0.5rem;
+            background: #0f3460;
+            border: 1px solid #667eea;
+            border-radius: 4px;
+            color: #eee;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .shortcut-btn:hover {
+            background: #667eea;
+            border-color: #764ba2;
+        }
+
+        /* Location display */
+        #location-display {
+            background: #0f3460;
+            padding: 0.75rem;
+            border-radius: 4px;
+            border: 1px solid #667eea;
+            margin-bottom: 0.75rem;
+        }
+
+        .location-coords {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-top: 0.25rem;
+        }
+
+        .location-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #eee;
+        }
+
+        /* Date picker */
+        #date-picker {
+            width: 100%;
+            padding: 0.6rem;
+            background: #0f3460;
+            border: 1px solid #667eea;
+            border-radius: 4px;
+            color: #eee;
+            font-size: 0.9rem;
+        }
+
+        /* Info panel */
+        #info-panel {
+            background: #0f3460;
+            padding: 0.75rem;
+            border-radius: 4px;
+            border: 1px solid #667eea;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid #1a1a2e;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #aaa;
+            font-size: 0.8rem;
+        }
+
+        .info-value {
+            color: #eee;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .info-value.sun-up {
+            color: #FFD700;
+        }
+
+        .info-value.sun-down {
+            color: #666;
+        }
+
+        /* Loading */
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 2rem 3rem;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 9999;
+        }
+
+        .spinner {
+            border: 3px solid #1a1a2e;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #main-content {
+                flex-direction: column;
+            }
+            #control-panel {
+                width: 100%;
+                max-height: 45vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Header -->
+        <div id="header">
+            <h1>🌞 Sun Simulator</h1>
+            <div id="current-time-display">Loading...</div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="main-content">
+            <!-- Map -->
+            <div id="map-container">
+                <div id="map"></div>
+                <canvas id="sun-path-canvas"></canvas>
+            </div>
+
+            <!-- Control Panel -->
+            <div id="control-panel">
+                <!-- Location -->
+                <div class="control-section">
+                    <h3>📍 Location</h3>
+                    <div id="location-display">
+                        <div class="location-name">New York City</div>
+                        <div class="location-coords">40.7128°N, 74.0060°W</div>
+                    </div>
+                </div>
+
+                <!-- Date -->
+                <div class="control-section">
+                    <h3>📅 Date</h3>
+                    <input type="text" id="date-picker" placeholder="Select date">
+
+                    <!-- Date Navigation -->
+                    <div class="date-navigation" style="margin: 0.5rem 0; display: flex; gap: 0.25rem; justify-content: center;">
+                        <button class="nav-btn" id="btn-prev-month" title="Previous Month (Left Arrow)">◀◀</button>
+                        <button class="nav-btn" id="btn-prev-week" title="Previous Week (Shift+Left)">◀</button>
+                        <button class="nav-btn" id="btn-prev-day" title="Previous Day (Down Arrow)">◂</button>
+                        <button class="nav-btn" id="btn-today" title="Today (T)">📅 Today</button>
+                        <button class="nav-btn" id="btn-next-day" title="Next Day (Up Arrow)">▸</button>
+                        <button class="nav-btn" id="btn-next-week" title="Next Week (Shift+Right)">▶</button>
+                        <button class="nav-btn" id="btn-next-month" title="Next Month (Right Arrow)">▶▶</button>
+                    </div>
+
+                    <div class="date-shortcuts">
+                        <div class="shortcut-btn" data-date="summer-solstice">☀️ Summer Sol.</div>
+                        <div class="shortcut-btn" data-date="winter-solstice">❄️ Winter Sol.</div>
+                        <div class="shortcut-btn" data-date="spring-equinox">🌸 Spring Eq.</div>
+                        <div class="shortcut-btn" data-date="fall-equinox">🍂 Fall Eq.</div>
+                    </div>
+                </div>
+
+                <!-- Timeline -->
+                <div class="control-section">
+                    <h3>⏰ Time of Day</h3>
+                    <div id="timeline-container">
+                        <canvas id="timeline-canvas" width="288" height="60"></canvas>
+                        <div class="time-labels">
+                            <span>12 AM</span>
+                            <span>6 AM</span>
+                            <span>12 PM</span>
+                            <span>6 PM</span>
+                            <span>12 AM</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Sun Info -->
+                <div class="control-section">
+                    <h3>☀️ Sun Information</h3>
+                    <div id="info-panel">
+                        <div class="info-row">
+                            <span class="info-label">Azimuth</span>
+                            <span class="info-value" id="info-azimuth">--°</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Altitude</span>
+                            <span class="info-value" id="info-altitude">--°</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Sunrise</span>
+                            <span class="info-value" id="info-sunrise">--:--</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Solar Noon</span>
+                            <span class="info-value" id="info-noon">--:--</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Sunset</span>
+                            <span class="info-value" id="info-sunset">--:--</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Day Length</span>
+                            <span class="info-value" id="info-daylength">--h --m</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" style="display: none;">
+        <div class="spinner"></div>
+        <div>Loading Sun Simulator...</div>
+    </div>
+
+    <!-- Libraries -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <script>
+        console.log('🌞 Sun Simulator Starting...');
+
+        // State
+        let map = null;
+        let currentDate = new Date();
+        let currentLat = 40.7128;
+        let currentLon = -74.0060;
+        let sunPathCanvas = null;
+        let timelineCanvas = null;
+
+        // Initialize
+        function init() {
+            initMap();
+            initTimeline();
+            initControls();
+            initDatePicker();
+            updateAll();
+            console.log('✅ Sun Simulator Ready!');
+        }
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: true,
+                attributionControl: true
+            }).setView([currentLat, currentLon], 12);
+
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri',
+                maxZoom: 18
+            }).addTo(map);
+
+            // Update location on map move/zoom
+            map.on('moveend zoomend', function() {
+                const center = map.getCenter();
+                currentLat = center.lat;
+                currentLon = center.lng;
+                updateAll();
+            });
+
+            // Setup sun path canvas
+            sunPathCanvas = document.getElementById('sun-path-canvas');
+            resizeSunPathCanvas();
+            map.on('move zoom resize', () => {
+                resizeSunPathCanvas();
+                drawSunPath();
+            });
+        }
+
+        function resizeSunPathCanvas() {
+            const container = document.getElementById('map-container');
+            sunPathCanvas.width = container.clientWidth;
+            sunPathCanvas.height = container.clientHeight;
+        }
+
+        // Draw compass rose with sunrise/sunset lines
+        function drawSunPath() {
+            const ctx = sunPathCanvas.getContext('2d');
+            ctx.clearRect(0, 0, sunPathCanvas.width, sunPathCanvas.height);
+
+            // Get center point (always at canvas center)
+            const center = {
+                x: sunPathCanvas.width / 2,
+                y: sunPathCanvas.height / 2
+            };
+
+            // Compass circle radius (in pixels)
+            const radius = 150;
+
+            // Draw compass circle
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Draw compass directions
+            const directions = [
+                { angle: 0, label: 'N', main: true },
+                { angle: 45, label: 'NE', main: false },
+                { angle: 90, label: 'E', main: true },
+                { angle: 135, label: 'SE', main: false },
+                { angle: 180, label: 'S', main: true },
+                { angle: 225, label: 'SW', main: false },
+                { angle: 270, label: 'W', main: true },
+                { angle: 315, label: 'NW', main: false }
+            ];
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            directions.forEach(dir => {
+                // Convert from compass bearing to math angle (compass: 0=N, clockwise; math: 0=E, counterclockwise)
+                const mathAngle = (90 - dir.angle) * Math.PI / 180;
+
+                // Draw direction line
+                const lineStart = radius * 0.85;
+                const lineEnd = radius;
+                const x1 = center.x + lineStart * Math.cos(mathAngle);
+                const y1 = center.y - lineStart * Math.sin(mathAngle);
+                const x2 = center.x + lineEnd * Math.cos(mathAngle);
+                const y2 = center.y - lineEnd * Math.sin(mathAngle);
+
+                ctx.strokeStyle = dir.main ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = dir.main ? 2 : 1;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+
+                // Draw direction label
+                const labelDist = radius * 1.15;
+                const labelX = center.x + labelDist * Math.cos(mathAngle);
+                const labelY = center.y - labelDist * Math.sin(mathAngle);
+
+                ctx.fillStyle = dir.main ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.6)';
+                ctx.font = dir.main ? 'bold 16px sans-serif' : 'bold 12px sans-serif';
+                ctx.shadowBlur = 4;
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillText(dir.label, labelX, labelY);
+                ctx.shadowBlur = 0;
+            });
+
+            // Get sunrise and sunset data
+            const times = SunCalc.getTimes(currentDate, currentLat, currentLon);
+            const sunrisePos = times.sunrise ? SunCalc.getPosition(times.sunrise, currentLat, currentLon) : null;
+            const sunsetPos = times.sunset ? SunCalc.getPosition(times.sunset, currentLat, currentLon) : null;
+
+            // Draw sunrise line
+            if (sunrisePos) {
+                const azimuth = sunrisePos.azimuth;
+                // SunCalc: 0=South, π/2=West, π=North, 3π/2=East (measured from south going west)
+                // Canvas: 0=East, π/2=North, π=West, 3π/2=South (with y-inverted)
+                const mathAngle = (3 * Math.PI / 2) - azimuth;
+                const x = center.x + radius * Math.cos(mathAngle);
+                const y = center.y - radius * Math.sin(mathAngle);
+
+                ctx.strokeStyle = 'rgba(255, 165, 0, 0.8)'; // Orange for sunrise
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(center.x, center.y);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+
+            // Draw sunset line
+            if (sunsetPos) {
+                const azimuth = sunsetPos.azimuth;
+                const mathAngle = (3 * Math.PI / 2) - azimuth;
+                const x = center.x + radius * Math.cos(mathAngle);
+                const y = center.y - radius * Math.sin(mathAngle);
+
+                ctx.strokeStyle = 'rgba(255, 69, 0, 0.8)'; // Red-orange for sunset
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(center.x, center.y);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+
+            // Draw current sun position
+            const sunPos = SunCalc.getPosition(currentDate, currentLat, currentLon);
+            if (sunPos.altitude > -0.1) {
+                const azimuth = sunPos.azimuth;
+                const mathAngle = (3 * Math.PI / 2) - azimuth;
+
+                // Sun position line
+                const sunDist = radius * 0.95;
+                const x = center.x + sunDist * Math.cos(mathAngle);
+                const y = center.y - sunDist * Math.sin(mathAngle);
+
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(center.x, center.y);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Sun marker
+                ctx.beginPath();
+                ctx.arc(x, y, 14, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFD700';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#FFD700';
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Sun glow
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, 30);
+                gradient.addColorStop(0, 'rgba(255, 215, 0, 0.5)');
+                gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Draw center crosshair
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+
+            // Horizontal line
+            ctx.beginPath();
+            ctx.moveTo(center.x - 15, center.y);
+            ctx.lineTo(center.x + 15, center.y);
+            ctx.stroke();
+
+            // Vertical line
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y - 15);
+            ctx.lineTo(center.x, center.y + 15);
+            ctx.stroke();
+
+            // Center circle
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Draw legend
+            drawLegend(ctx, times);
+        }
+
+        function drawLegend(ctx, times) {
+            const legendX = 20;
+            const legendY = 20;
+            const legendWidth = 180;
+            const lineHeight = 25;
+            const legendItems = [];
+
+            // Add sunrise to legend if it exists
+            if (times.sunrise) {
+                legendItems.push({
+                    color: 'rgba(255, 165, 0, 0.8)',
+                    label: 'Sunrise',
+                    time: formatTime(times.sunrise)
+                });
+            }
+
+            // Add sunset to legend if it exists
+            if (times.sunset) {
+                legendItems.push({
+                    color: 'rgba(255, 69, 0, 0.8)',
+                    label: 'Sunset',
+                    time: formatTime(times.sunset)
+                });
+            }
+
+            // Add current sun position
+            const sunPos = SunCalc.getPosition(currentDate, currentLat, currentLon);
+            if (sunPos.altitude > -0.1) {
+                legendItems.push({
+                    color: 'rgba(255, 215, 0, 0.6)',
+                    label: 'Current Sun',
+                    time: formatTime(currentDate),
+                    dashed: true
+                });
+            }
+
+            // Don't draw legend if no items
+            if (legendItems.length === 0) return;
+
+            const legendHeight = 15 + (legendItems.length * lineHeight) + 10;
+
+            // Draw legend background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
+
+            // Draw legend border
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
+
+            // Draw legend items
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+
+            legendItems.forEach((item, index) => {
+                const itemY = legendY + 15 + (index * lineHeight) + (lineHeight / 2);
+
+                // Draw line sample
+                const lineStartX = legendX + 10;
+                const lineEndX = legendX + 35;
+
+                ctx.strokeStyle = item.color;
+                ctx.lineWidth = 3;
+                if (item.dashed) {
+                    ctx.setLineDash([5, 5]);
+                }
+                ctx.beginPath();
+                ctx.moveTo(lineStartX, itemY);
+                ctx.lineTo(lineEndX, itemY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Draw label
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                ctx.fillText(item.label, legendX + 45, itemY);
+
+                // Draw time
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(item.time, legendX + legendWidth - 10, itemY);
+                ctx.textAlign = 'left';
+                ctx.font = 'bold 12px sans-serif';
+            });
+        }
+
+        // Initialize timeline
+        function initTimeline() {
+            timelineCanvas = document.getElementById('timeline-canvas');
+            const ctx = timelineCanvas.getContext('2d');
+
+            // Touch/mouse events for scrubbing
+            let isDragging = false;
+
+            timelineCanvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                updateTimeFromCanvas(e);
+            });
+
+            timelineCanvas.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                updateTimeFromCanvas(e.touches[0]);
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) updateTimeFromCanvas(e);
+            });
+
+            document.addEventListener('touchmove', (e) => {
+                if (isDragging) updateTimeFromCanvas(e.touches[0]);
+            });
+
+            document.addEventListener('mouseup', () => isDragging = false);
+            document.addEventListener('touchend', () => isDragging = false);
+
+            drawTimeline();
+        }
+
+        function updateTimeFromCanvas(e) {
+            const rect = timelineCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const fraction = Math.max(0, Math.min(1, x / rect.width));
+            const minutes = fraction * 1440; // 24 hours * 60 minutes
+
+            currentDate.setHours(Math.floor(minutes / 60), Math.floor(minutes % 60), 0, 0);
+            updateAll();
+        }
+
+        function drawTimeline() {
+            const ctx = timelineCanvas.getContext('2d');
+            const width = timelineCanvas.width;
+            const height = timelineCanvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Get sunrise/sunset times
+            const times = SunCalc.getTimes(currentDate, currentLat, currentLon);
+            const sunrise = times.sunrise ? times.sunrise.getHours() + times.sunrise.getMinutes()/60 : 6;
+            const sunset = times.sunset ? times.sunset.getHours() + times.sunset.getMinutes()/60 : 18;
+
+            // Draw color-coded timeline
+            for (let i = 0; i < width; i++) {
+                const hour = (i / width) * 24;
+                let color;
+
+                if (hour < sunrise - 1) {
+                    color = '#1a1a3e'; // Night
+                } else if (hour < sunrise) {
+                    const t = (hour - (sunrise - 1));
+                    color = interpolateColor('#1a1a3e', '#ff6b6b', t); // Dawn
+                } else if (hour < sunset) {
+                    color = '#87CEEB'; // Day
+                } else if (hour < sunset + 1) {
+                    const t = (hour - sunset);
+                    color = interpolateColor('#ff6b6b', '#1a1a3e', t); // Dusk
+                } else {
+                    color = '#1a1a3e'; // Night
+                }
+
+                ctx.fillStyle = color;
+                ctx.fillRect(i, 0, 1, height - 15);
+            }
+
+            // Draw current time indicator
+            const currentHour = currentDate.getHours() + currentDate.getMinutes()/60;
+            const x = (currentHour / 24) * width;
+
+            ctx.fillStyle = '#FFD700';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(x, height - 15, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Draw time text
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            const timeText = formatTime(currentDate);
+            ctx.fillText(timeText, x, height - 2);
+        }
+
+        function interpolateColor(color1, color2, t) {
+            const c1 = parseInt(color1.slice(1), 16);
+            const c2 = parseInt(color2.slice(1), 16);
+            const r1 = (c1 >> 16) & 255, g1 = (c1 >> 8) & 255, b1 = c1 & 255;
+            const r2 = (c2 >> 16) & 255, g2 = (c2 >> 8) & 255, b2 = c2 & 255;
+            const r = Math.round(r1 + (r2 - r1) * t);
+            const g = Math.round(g1 + (g2 - g1) * t);
+            const b = Math.round(b1 + (b2 - b1) * t);
+            return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+        }
+
+        // Initialize controls
+        function initControls() {
+            // Date shortcuts
+            document.querySelectorAll('.shortcut-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const type = btn.dataset.date;
+                    const year = currentDate.getFullYear();
+
+                    switch(type) {
+                        case 'summer-solstice':
+                            currentDate = new Date(year, 5, 21, 12, 0); // June 21
+                            break;
+                        case 'winter-solstice':
+                            currentDate = new Date(year, 11, 21, 12, 0); // Dec 21
+                            break;
+                        case 'spring-equinox':
+                            currentDate = new Date(year, 2, 20, 12, 0); // March 20
+                            break;
+                        case 'fall-equinox':
+                            currentDate = new Date(year, 8, 22, 12, 0); // Sept 22
+                            break;
+                    }
+                    datePicker.setDate(currentDate);
+                    updateAll();
+                });
+            });
+
+            // Date navigation buttons
+            document.getElementById('btn-prev-day').addEventListener('click', () => changeDate(-1, 'day'));
+            document.getElementById('btn-next-day').addEventListener('click', () => changeDate(1, 'day'));
+            document.getElementById('btn-prev-week').addEventListener('click', () => changeDate(-7, 'day'));
+            document.getElementById('btn-next-week').addEventListener('click', () => changeDate(7, 'day'));
+            document.getElementById('btn-prev-month').addEventListener('click', () => changeDate(-1, 'month'));
+            document.getElementById('btn-next-month').addEventListener('click', () => changeDate(1, 'month'));
+            document.getElementById('btn-today').addEventListener('click', () => {
+                currentDate = new Date();
+                datePicker.setDate(currentDate);
+                updateAll();
+            });
+
+            // Keyboard shortcuts for date navigation
+            document.addEventListener('keydown', (e) => {
+                // Ignore if user is typing in an input
+                if (e.target.tagName === 'INPUT') return;
+
+                switch(e.key) {
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        changeDate(1, 'day');
+                        break;
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        changeDate(-1, 'day');
+                        break;
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            changeDate(-7, 'day'); // Shift+Left = Previous Week
+                        } else {
+                            changeDate(-1, 'month'); // Left = Previous Month
+                        }
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        if (e.shiftKey) {
+                            changeDate(7, 'day'); // Shift+Right = Next Week
+                        } else {
+                            changeDate(1, 'month'); // Right = Next Month
+                        }
+                        break;
+                    case 't':
+                    case 'T':
+                        currentDate = new Date();
+                        datePicker.setDate(currentDate);
+                        updateAll();
+                        break;
+                }
+            });
+        }
+
+        // Date navigation helper
+        function changeDate(amount, unit) {
+            const newDate = new Date(currentDate);
+
+            if (unit === 'day') {
+                newDate.setDate(newDate.getDate() + amount);
+            } else if (unit === 'month') {
+                newDate.setMonth(newDate.getMonth() + amount);
+            }
+
+            currentDate = newDate;
+            datePicker.setDate(currentDate);
+            updateAll();
+        }
+
+        // Initialize date picker
+        let datePicker;
+        function initDatePicker() {
+            datePicker = flatpickr('#date-picker', {
+                defaultDate: currentDate,
+                dateFormat: 'Y-m-d',
+                onChange: function(selectedDates) {
+                    if (selectedDates.length > 0) {
+                        currentDate.setFullYear(selectedDates[0].getFullYear());
+                        currentDate.setMonth(selectedDates[0].getMonth());
+                        currentDate.setDate(selectedDates[0].getDate());
+                        updateAll();
+                    }
+                }
+            });
+        }
+
+        // Update functions
+        function updateLocation() {
+            const latDir = currentLat >= 0 ? 'N' : 'S';
+            const lonDir = currentLon >= 0 ? 'E' : 'W';
+            document.querySelector('.location-coords').textContent =
+                `${Math.abs(currentLat).toFixed(4)}°${latDir}, ${Math.abs(currentLon).toFixed(4)}°${lonDir}`;
+        }
+
+        function updateSunInfo() {
+            const sunPos = SunCalc.getPosition(currentDate, currentLat, currentLon);
+            const sunTimes = SunCalc.getTimes(currentDate, currentLat, currentLon);
+
+            const azimuth = (sunPos.azimuth * 180 / Math.PI + 180) % 360;
+            const altitude = sunPos.altitude * 180 / Math.PI;
+
+            document.getElementById('info-azimuth').textContent = azimuth.toFixed(1) + '°';
+            const altEl = document.getElementById('info-altitude');
+            altEl.textContent = altitude.toFixed(1) + '°';
+            altEl.className = 'info-value ' + (altitude > 0 ? 'sun-up' : 'sun-down');
+
+            document.getElementById('info-sunrise').textContent =
+                sunTimes.sunrise ? formatTime(sunTimes.sunrise) : 'No sunrise';
+            document.getElementById('info-noon').textContent =
+                sunTimes.solarNoon ? formatTime(sunTimes.solarNoon) : '--:--';
+            document.getElementById('info-sunset').textContent =
+                sunTimes.sunset ? formatTime(sunTimes.sunset) : 'No sunset';
+
+            if (sunTimes.sunrise && sunTimes.sunset) {
+                const dayLength = (sunTimes.sunset - sunTimes.sunrise) / 1000 / 60;
+                const hours = Math.floor(dayLength / 60);
+                const minutes = Math.floor(dayLength % 60);
+                document.getElementById('info-daylength').textContent = `${hours}h ${minutes}m`;
+            } else {
+                document.getElementById('info-daylength').textContent =
+                    altitude > 0 ? '24h (Midnight Sun)' : '0h (Polar Night)';
+            }
+        }
+
+        function updateHeaderTime() {
+            const options = {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            document.getElementById('current-time-display').textContent =
+                currentDate.toLocaleDateString('en-US', options);
+        }
+
+        function updateAll() {
+            updateLocation();
+            updateSunInfo();
+            updateHeaderTime();
+            drawTimeline();
+            drawSunPath();
+        }
+
+        function formatTime(date) {
+            if (!date || isNaN(date.getTime())) return '--:--';
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const displayHours = hours % 12 || 12;
+            return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            document.getElementById('loading').style.display = 'none';
+            init();
+        });
+
+        document.getElementById('loading').style.display = 'block';
+    </script>
+</body>
+</html>

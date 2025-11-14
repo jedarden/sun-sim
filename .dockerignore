@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build output
+dist/
+coverage/
+
+# Tests
+tests/
+*.test.js
+*.spec.js
+vitest.config.js
+playwright.config.js
+
+# Development
+.git/
+.github/
+.vscode/
+*.log
+.DS_Store
+
+# Documentation (optional - include if you want docs in container)
+# docs/
+# research/
+
+# Config files
+.env
+.env.local
