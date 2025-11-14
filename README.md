@@ -25,7 +25,21 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 
 ## 🚀 Quick Start
 
-### Option 1: Docker (Recommended)
+### Option 1: Docker from GitHub Container Registry (Easiest)
+
+```bash
+# Pull and run the pre-built image
+docker pull ghcr.io/jedarden/sun-sim:latest
+docker run -d -p 3000:3000 --name sun-sim ghcr.io/jedarden/sun-sim:latest
+
+# Or use a specific version
+docker pull ghcr.io/jedarden/sun-sim:0.1
+docker run -d -p 3000:3000 --name sun-sim ghcr.io/jedarden/sun-sim:0.1
+```
+
+Access at: **http://localhost:3000**
+
+### Option 2: Docker Build Locally
 
 ```bash
 # Build and run with Docker Compose
@@ -38,7 +52,7 @@ docker run -p 3000:3000 sun-simulator
 
 Access at: **http://localhost:3000**
 
-### Option 2: Python Server (No Dependencies)
+### Option 3: Python Server (No Dependencies)
 
 ```bash
 # Run the built-in Python server
@@ -50,7 +64,7 @@ python3 serve.py 8080
 
 Access at: **http://localhost:3000** (or your custom port)
 
-### Option 3: Any HTTP Server
+### Option 4: Any HTTP Server
 
 The application is a static webpage, so you can use any web server:
 
@@ -194,7 +208,7 @@ For issues or questions:
 ---
 
 <p align="center">
-  <strong>Status:</strong> ✅ Production Ready | <strong>Version:</strong> 2.0.0 | <strong>Cost:</strong> $0
+  <strong>Status:</strong> ✅ Production Ready | <strong>Version:</strong> 0.1.0 | <strong>Cost:</strong> $0
 </p>
 
 <p align="center">
