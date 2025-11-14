@@ -81,6 +81,42 @@
             fill: currentColor;
         }
 
+        .gps-btn {
+            width: 100%;
+            padding: 0.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-top: 0.5rem;
+        }
+
+        .gps-btn:hover {
+            opacity: 0.9;
+        }
+
+        .gps-btn:active {
+            transform: scale(0.98);
+        }
+
+        .gps-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .gps-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
         /* Main content */
         #main-content {
             display: flex;
@@ -348,6 +384,12 @@
                     <div id="location-display">
                         <div class="location-name">New York City</div>
                         <div class="location-coords">40.7128°N, 74.0060°W</div>
+                    <button class="gps-btn" id="btn-use-gps" title="Use my current location">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+                        </svg>
+                        <span id="gps-btn-text">Use My Location</span>
+                    </button>
                     </div>
                 </div>
 
@@ -896,6 +938,60 @@
             document.getElementById('btn-next-week').addEventListener('click', () => changeDate(7, 'day'));
             document.getElementById('btn-prev-month').addEventListener('click', () => changeDate(-1, 'month'));
             document.getElementById('btn-next-month').addEventListener('click', () => changeDate(1, 'month'));
+            // GPS Location button
+            document.getElementById('btn-use-gps').addEventListener('click', () => {
+                const btn = document.getElementById('btn-use-gps');
+                const btnText = document.getElementById('gps-btn-text');
+                
+                if (!navigator.geolocation) {
+                    alert('Geolocation is not supported by your browser');
+                    return;
+                }
+                
+                btn.disabled = true;
+                btnText.textContent = 'Getting location...';
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        
+                        // Center map on user location
+                        map.setView([lat, lon], 12);
+                        
+                        // Update location (will be handled by map moveend event)
+                        currentLat = lat;
+                        currentLon = lon;
+                        updateAll();
+                        
+                        btn.disabled = false;
+                        btnText.textContent = 'Use My Location';
+                    },
+                    (error) => {
+                        let errorMsg = 'Unable to get location';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMsg = 'Location permission denied. Please enable location access in your browser settings.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMsg = 'Location information unavailable.';
+                                break;
+                            case error.TIMEOUT:
+                                errorMsg = 'Location request timed out.';
+                                break;
+                        }
+                        alert(errorMsg);
+                        btn.disabled = false;
+                        btnText.textContent = 'Use My Location';
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            });
+
             document.getElementById('btn-today').addEventListener('click', () => {
                 currentDate = new Date();
                 datePicker.setDate(currentDate);
