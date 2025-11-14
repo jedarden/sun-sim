@@ -2,29 +2,111 @@ name: Docker Build and Publish
 
 on:
   push:
-    tags:
-      - 'v*'  # Trigger on version tags (e.g., v0.1.0, v1.0.0)
-  workflow_dispatch:  # Allow manual triggering
+    branches:
+      - main
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  version-and-build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for version detection
+
+      - name: Detect version changes
+        id: version
+        run: |
+          # Get current version from VERSION file
+          CURRENT_VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+          # Get the latest git tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_VERSION=${LATEST_TAG#v}
+          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+
+          # Check if VERSION file changed in this commit
+          if git diff HEAD^ HEAD --name-only | grep -q "^VERSION$"; then
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+            echo "VERSION file was manually updated to $CURRENT_VERSION"
+          else
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if code files changed
+          CODE_CHANGED=$(git diff HEAD^ HEAD --name-only | grep -E '^(index\.html|serve\.py|Dockerfile|docs/)' || echo "")
+          if [ -n "$CODE_CHANGED" ]; then
+            echo "code_changed=true" >> $GITHUB_OUTPUT
+            echo "Code files changed:"
+            echo "$CODE_CHANGED"
+          else
+            echo "code_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Auto-increment patch version
+        id: increment
+        run: |
+          CURRENT_VERSION="${{ steps.version.outputs.current_version }}"
+          VERSION_CHANGED="${{ steps.version.outputs.version_changed }}"
+          CODE_CHANGED="${{ steps.version.outputs.code_changed }}"
+
+          if [ "$VERSION_CHANGED" = "true" ]; then
+            # Version was manually updated, use it as-is
+            NEW_VERSION="$CURRENT_VERSION"
+            echo "Using manually updated version: $NEW_VERSION"
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          elif [ "$CODE_CHANGED" = "true" ]; then
+            # Code changed, auto-increment patch version
+            IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+            patch=$((patch + 1))
+            NEW_VERSION="${major}.${minor}.${patch}"
+            echo "$NEW_VERSION" > VERSION
+            echo "Auto-incremented patch version: $CURRENT_VERSION -> $NEW_VERSION"
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "auto_incremented=true" >> $GITHUB_OUTPUT
+          else
+            # No version change, no code change - skip build
+            NEW_VERSION="$CURRENT_VERSION"
+            echo "No version or code changes detected, skipping build"
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Commit version bump
+        if: steps.increment.outputs.auto_incremented == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add VERSION
+          git commit -m "chore: bump version to ${{ steps.increment.outputs.new_version }} [skip ci]"
+          git push
+
+      - name: Create and push tag
+        if: steps.increment.outputs.should_build == 'true'
+        run: |
+          VERSION="${{ steps.increment.outputs.new_version }}"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
 
       - name: Set up Docker Buildx
+        if: steps.increment.outputs.should_build == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
+        if: steps.increment.outputs.should_build == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -32,17 +114,20 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels)
+        if: steps.increment.outputs.should_build == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.increment.outputs.new_version }}
+            type=semver,pattern={{version}},value=${{ steps.increment.outputs.new_version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.increment.outputs.new_version }}
+            type=semver,pattern={{major}},value=${{ steps.increment.outputs.new_version }}
+            type=raw,value=latest,enable=true
 
       - name: Build and push Docker image
+        if: steps.increment.outputs.should_build == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -54,22 +139,27 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Image summary
+        if: steps.increment.outputs.should_build == 'true'
         run: |
+          VERSION="${{ steps.increment.outputs.new_version }}"
           echo "### 🐳 Docker Image Published! 🎉" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** v$VERSION" >> $GITHUB_STEP_SUMMARY
           echo "**Registry:** ghcr.io" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** ${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Available Tags:**" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "ghcr.io/${{ env.IMAGE_NAME }}:$VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "ghcr.io/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pull command:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ env.IMAGE_NAME }}:$VERSION" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Run command:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker run -d -p 3000:3000 ghcr.io/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -d -p 3000:3000 ghcr.io/${{ env.IMAGE_NAME }}:$VERSION" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY

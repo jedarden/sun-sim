@@ -11,14 +11,23 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 ## ✨ Features
 
 🧭 **Compass Rose Overlay** - Visual compass with cardinal directions and sunrise/sunset bearings
+
 ☀️ **Real-time Sun Position** - Calculate azimuth and altitude angles with visual bearing indicator
+
 🌅 **Sunrise/Sunset Lines** - Orange/red lines showing exact bearing and time
+
 🗺️ **Interactive Map** - Pan and zoom to select any location worldwide
+
 📅 **Date Navigation** - Arrow keys and buttons to scroll through the year
+
 ⏰ **Color-Coded Timeline** - Visual day/night representation with smooth animations
+
 🌍 **Global Coverage** - Works at all latitudes including polar regions
+
 📱 **Mobile Responsive** - Touch-friendly interface with drag controls
+
 💰 **Zero Cost** - Free satellite imagery, no API keys required
+
 🎯 **High Accuracy** - ±0.01° position, ±1 minute timing
 
 ---
@@ -120,6 +129,51 @@ python -m http.server 3000
 | 🛰️ Satellite Imagery | [ESRI World Imagery](https://www.arcgis.com/) | Free high-res tiles |
 | 📅 Date Picker | [Flatpickr](https://flatpickr.js.org/) | Date selection |
 | 💻 Frontend | Vanilla JavaScript | No framework dependencies |
+
+---
+
+## 🔄 Versioning
+
+This project uses **automatic semantic versioning** with GitHub Actions:
+
+### Version Management
+
+- **VERSION file** - Contains the current semantic version (e.g., `0.1.0`)
+- **Automatic patch increment** - When code changes (index.html, serve.py, Dockerfile, docs/), the patch version auto-increments
+- **Manual version updates** - To bump minor or major versions, update the VERSION file manually
+
+### How It Works
+
+**Scenario 1: Code Changes**
+```bash
+# You modify index.html
+# Workflow detects code change
+# Auto-increments: 0.1.0 → 0.1.1
+# Creates tag: v0.1.1
+# Builds and publishes Docker image
+```
+
+**Scenario 2: Manual Version Update**
+```bash
+# You update VERSION file: 0.1.5 → 0.2.0
+# Workflow detects VERSION file change
+# Uses your version: 0.2.0
+# Creates tag: v0.2.0
+# Builds and publishes Docker image
+```
+
+**Scenario 3: Non-Code Changes**
+```bash
+# You update README.md only
+# Workflow detects no code or version changes
+# Skips build (no new Docker image)
+```
+
+### Versioning Rules
+
+- **Patch** (0.0.X) - Bug fixes, small changes (auto-incremented)
+- **Minor** (0.X.0) - New features, backwards-compatible (manual)
+- **Major** (X.0.0) - Breaking changes (manual)
 
 ---
 
