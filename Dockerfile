@@ -7,8 +7,6 @@ WORKDIR /app
 # Copy application files
 COPY index.html .
 COPY serve.py .
-COPY src/ ./src/
-COPY research/ ./research/
 COPY docs/ ./docs/
 
 # Expose port
