@@ -1071,11 +1071,68 @@
         }
 
         // Update functions
+        let geocodeCache = {};
+        let geocodeTimeout = null;
+
+        async function reverseGeocode(lat, lon) {
+            // Create cache key (rounded to 2 decimals to avoid too many unique requests)
+            const cacheKey = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+
+            // Check cache first
+            if (geocodeCache[cacheKey]) {
+                return geocodeCache[cacheKey];
+            }
+
+            try {
+                // Use Nominatim API (OpenStreetMap) for reverse geocoding
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`,
+                    {
+                        headers: {
+                            'User-Agent': 'SunSimulator/1.0'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Geocoding failed');
+                }
+
+                const data = await response.json();
+
+                // Extract city/location name from response
+                let locationName = 'Unknown Location';
+                if (data.address) {
+                    locationName = data.address.city ||
+                                   data.address.town ||
+                                   data.address.village ||
+                                   data.address.county ||
+                                   data.address.state ||
+                                   data.address.country ||
+                                   'Unknown Location';
+                }
+
+                // Cache the result
+                geocodeCache[cacheKey] = locationName;
+                return locationName;
+            } catch (error) {
+                console.warn('Reverse geocoding failed:', error);
+                return 'Custom Location';
+            }
+        }
+
         function updateLocation() {
             const latDir = currentLat >= 0 ? 'N' : 'S';
             const lonDir = currentLon >= 0 ? 'E' : 'W';
             document.querySelector('.location-coords').textContent =
                 `${Math.abs(currentLat).toFixed(4)}°${latDir}, ${Math.abs(currentLon).toFixed(4)}°${lonDir}`;
+
+            // Debounce geocoding requests to avoid spamming the API
+            clearTimeout(geocodeTimeout);
+            geocodeTimeout = setTimeout(async () => {
+                const locationName = await reverseGeocode(currentLat, currentLon);
+                document.querySelector('.location-name').textContent = locationName;
+            }, 500); // Wait 500ms after user stops moving map
         }
 
         function updateSunInfo() {
