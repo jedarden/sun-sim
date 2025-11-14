@@ -60,11 +60,26 @@ jobs:
           VERSION_CHANGED="${{ steps.version.outputs.version_changed }}"
           CODE_CHANGED="${{ steps.version.outputs.code_changed }}"
 
+          # Check if tag already exists for current version
+          if git rev-parse "v$CURRENT_VERSION" >/dev/null 2>&1; then
+            TAG_EXISTS=true
+            echo "Tag v$CURRENT_VERSION already exists"
+          else
+            TAG_EXISTS=false
+          fi
+
           if [ "$VERSION_CHANGED" = "true" ]; then
             # Version was manually updated, use it as-is
             NEW_VERSION="$CURRENT_VERSION"
             echo "Using manually updated version: $NEW_VERSION"
-            echo "should_build=true" >> $GITHUB_OUTPUT
+
+            # Only build if tag doesn't exist
+            if [ "$TAG_EXISTS" = "true" ]; then
+              echo "Tag v$NEW_VERSION already exists, skipping build"
+              echo "should_build=false" >> $GITHUB_OUTPUT
+            else
+              echo "should_build=true" >> $GITHUB_OUTPUT
+            fi
           elif [ "$CODE_CHANGED" = "true" ]; then
             # Code changed, auto-increment patch version
             IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
@@ -98,8 +113,15 @@ jobs:
           VERSION="${{ steps.increment.outputs.new_version }}"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git tag -a "v$VERSION" -m "Release v$VERSION"
-          git push origin "v$VERSION"
+
+          # Check if tag already exists
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists, skipping tag creation"
+          else
+            git tag -a "v$VERSION" -m "Release v$VERSION"
+            git push origin "v$VERSION"
+            echo "Created and pushed tag v$VERSION"
+          fi
 
       - name: Set up Docker Buildx
         if: steps.increment.outputs.should_build == 'true'
