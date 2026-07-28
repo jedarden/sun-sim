@@ -194,6 +194,79 @@
             margin-top: 0.25rem;
         }
 
+        /* Animation controls */
+        #animation-controls {
+            margin-top: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .play-btn {
+            width: 100%;
+            padding: 0.6rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: opacity 0.2s, transform 0.1s, background 0.2s;
+        }
+
+        .play-btn:hover {
+            opacity: 0.9;
+        }
+
+        .play-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Red gradient while playing makes the active state obvious */
+        .play-btn.playing {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        }
+
+        .play-icon {
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .speed-controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.25rem;
+        }
+
+        .speed-btn {
+            padding: 0.4rem 0.2rem;
+            background: #0f3460;
+            border: 1px solid #667eea;
+            border-radius: 4px;
+            color: #eee;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .speed-btn:hover {
+            background: #667eea;
+            border-color: #764ba2;
+        }
+
+        .speed-btn.active {
+            background: #667eea;
+            border-color: #764ba2;
+            color: #fff;
+        }
+
         /* Date navigation buttons */
         .nav-btn {
             padding: 0.4rem 0.6rem;
@@ -431,6 +504,20 @@
                         </div>
                     </div>
 
+                    <!-- Animation Controls -->
+                    <div id="animation-controls">
+                        <button id="btn-play-pause" class="play-btn" title="Play/Pause time-lapse (Space)" aria-label="Play time-lapse animation">
+                            <span class="play-icon">▶</span>
+                            <span class="play-label">Play</span>
+                        </button>
+                        <div class="speed-controls" role="group" aria-label="Animation speed">
+                            <button class="speed-btn" data-speed="1x" title="Real-time (1 second = 1 second)">1×</button>
+                            <button class="speed-btn" data-speed="30x" title="~30 sim-min per second (~48s per day)">30×</button>
+                            <button class="speed-btn active" data-speed="60x" title="1 sim-hour per second (~24s per day)">60×</button>
+                            <button class="speed-btn" data-speed="2min" title="2 sim-min per frame (~12s per day)">2min</button>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Sun Info -->
@@ -490,6 +577,12 @@
         let currentLon = -74.0060;
         let sunPathCanvas = null;
         let timelineCanvas = null;
+
+        // Time-lapse animation state
+        let isPlaying = false;
+        let currentSpeedId = '60x';      // default preset (matches Workflow 3)
+        let animationFrameId = null;
+        let lastFrameTime = null;
 
         // Initialize
         function init() {
@@ -805,11 +898,13 @@
             let isDragging = false;
 
             timelineCanvas.addEventListener('mousedown', (e) => {
+                pauseAnimation(); // hand control cleanly to the scrubber
                 isDragging = true;
                 updateTimeFromCanvas(e);
             });
 
             timelineCanvas.addEventListener('touchstart', (e) => {
+                pauseAnimation();
                 isDragging = true;
                 updateTimeFromCanvas(e.touches[0]);
             });
@@ -904,6 +999,98 @@
             return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
         }
 
+        // ===== Time-Lapse Animation Controls =====
+        // Speed presets. `multiplier` = simulated seconds advanced per real second.
+        // Tuned so the "60x" preset traverses a full 24h day in ~24 seconds
+        // (86400s / 3600 = 24s), matching docs/ENHANCED-FEATURES.md Workflow 3.
+        const SPEED_PRESETS = [
+            { id: '1x',   multiplier: 1 },     // real-time (1s = 1s)
+            { id: '30x',  multiplier: 1800 },  // ~48s per day
+            { id: '60x',  multiplier: 3600 },  // ~24s per day
+            { id: '2min', multiplier: 7200 },  // ~12s per day (2 sim-min per frame)
+        ];
+
+        function getSpeedMultiplier() {
+            const preset = SPEED_PRESETS.find(s => s.id === currentSpeedId);
+            return preset ? preset.multiplier : 3600;
+        }
+
+        // Reflect isPlaying in the Play/Pause button (icon ▶/⏸ + gradient).
+        function updatePlayButton() {
+            const btn = document.getElementById('btn-play-pause');
+            const icon = btn.querySelector('.play-icon');
+            const label = btn.querySelector('.play-label');
+            if (isPlaying) {
+                icon.textContent = '⏸';
+                label.textContent = 'Pause';
+                btn.classList.add('playing');
+                btn.setAttribute('aria-label', 'Pause time-lapse animation');
+            } else {
+                icon.textContent = '▶';
+                label.textContent = 'Play';
+                btn.classList.remove('playing');
+                btn.setAttribute('aria-label', 'Play time-lapse animation');
+            }
+        }
+
+        // Begin time-lapse playback (no-op if already playing).
+        function startAnimation() {
+            if (isPlaying) return;
+            isPlaying = true;
+            lastFrameTime = null; // anchor on first frame so resume never jumps
+            updatePlayButton();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // Stop playback, preserving the exact current time position (no drift/snap).
+        function pauseAnimation() {
+            if (!isPlaying) return;
+            isPlaying = false;
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            lastFrameTime = null;
+            updatePlayButton();
+        }
+
+        function toggleAnimation() {
+            if (isPlaying) pauseAnimation();
+            else startAnimation();
+        }
+
+        // Select a speed preset. Takes effect immediately — even mid-playback —
+        // without resetting the current time position (no restart from 12 AM).
+        function selectSpeed(speedId) {
+            if (!SPEED_PRESETS.some(s => s.id === speedId)) return;
+            currentSpeedId = speedId;
+            document.querySelectorAll('.speed-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.speed === speedId);
+            });
+        }
+
+        // requestAnimationFrame loop: advance currentDate by multiplier * delta.
+        function animate(timestamp) {
+            if (!isPlaying) return;
+            if (lastFrameTime === null) {
+                lastFrameTime = timestamp; // first frame: anchor only, no advance
+            } else {
+                let deltaMs = timestamp - lastFrameTime;
+                lastFrameTime = timestamp;
+                // Cap large gaps (tab switches / background throttling) so a
+                // resumed run never jumps hours ahead in a single frame.
+                if (deltaMs > 100) deltaMs = 100;
+                if (deltaMs > 0) {
+                    const simDeltaMs = deltaMs * getSpeedMultiplier();
+                    // new Date() lets the time roll past midnight into the next
+                    // day and keep looping until paused.
+                    currentDate = new Date(currentDate.getTime() + simDeltaMs);
+                    updateAll();
+                }
+            }
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
         // Initialize controls
         function initControls() {
             // Date shortcuts
@@ -938,6 +1125,12 @@
             document.getElementById('btn-next-week').addEventListener('click', () => changeDate(7, 'day'));
             document.getElementById('btn-prev-month').addEventListener('click', () => changeDate(-1, 'month'));
             document.getElementById('btn-next-month').addEventListener('click', () => changeDate(1, 'month'));
+
+            // Time-lapse animation controls
+            document.getElementById('btn-play-pause').addEventListener('click', toggleAnimation);
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.addEventListener('click', () => selectSpeed(btn.dataset.speed));
+            });
             // GPS Location button
             document.getElementById('btn-use-gps').addEventListener('click', () => {
                 const btn = document.getElementById('btn-use-gps');
@@ -1002,6 +1195,14 @@
             document.addEventListener('keydown', (e) => {
                 // Ignore if user is typing in an input
                 if (e.target.tagName === 'INPUT') return;
+
+                // Space toggles play/pause. Skip when a button is focused so its
+                // native Space-activation fires instead of double-toggling.
+                if (e.key === ' ' && e.target.tagName !== 'BUTTON') {
+                    e.preventDefault();
+                    toggleAnimation();
+                    return;
+                }
 
                 switch(e.key) {
                     case 'ArrowUp':
