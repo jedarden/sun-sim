@@ -19,7 +19,7 @@ The Sun Simulator has been enhanced with advanced visualization features inspire
 - Golden color (#FFD700) with glow effect for visibility
 - 3px line width with 10px blur shadow
 
-**Code Location**: index.html:597-650
+**Code Location**: index.html:633-end (drawSunPath function)
 
 **Key Features**:
 - Automatically repositions when map is panned/zoomed
@@ -389,7 +389,7 @@ When time/location changes:
 
 ### Key Functions
 
-**drawSunPath()** (index.html:597-650)
+**drawSunPath()** (index.html:633-end)
 - Renders golden arc overlay on map
 - Calculates sun positions throughout day
 - Converts azimuth/altitude to map coordinates

@@ -18,6 +18,10 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 
 🗺️ **Interactive Map** - Pan and zoom to select any location worldwide
 
+📍 **GPS Location Button** - One-click location detection using browser geolocation API
+
+🏙️ **Automatic City Detection** - Reverse geocoding with Nominatim to display location names
+
 📅 **Date Navigation** - Arrow keys and buttons to scroll through the year
 
 ⏰ **Color-Coded Timeline** - Visual day/night representation with smooth animations
@@ -28,7 +32,9 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 
 💰 **Zero Cost** - Free satellite imagery, no API keys required
 
-🎯 **High Accuracy** - ±0.01° position, ±1 minute timing
+🎯 **High Accuracy** - SunCalc-powered solar calculations (±0.01° position, ±1 minute timing)
+
+🔗 **GitHub Integration** - Repository link in header for easy access to source code
 
 ---
 
@@ -220,10 +226,10 @@ All deployment options are **100% free** with no backend required.
 
 | Metric | Result |
 |--------|--------|
-| 🎯 Position Accuracy | ±0.0067° |
-| ⏱️ Timing Accuracy | ±39 seconds |
+| 🎯 Position Accuracy | ±0.01° (SunCalc library) |
+| ⏱️ Timing Accuracy | ±1 minute (SunCalc library) |
 | 🚀 Load Time | < 2.1 seconds |
-| 📦 Bundle Size | 87KB (gzipped) |
+| 📦 Bundle Size | ~11KB (gzipped) |
 | 🎬 Frame Rate | 58-60 FPS |
 
 ---
@@ -262,7 +268,7 @@ For issues or questions:
 ---
 
 <p align="center">
-  <strong>Status:</strong> ✅ Production Ready | <strong>Version:</strong> 0.1.0 | <strong>Cost:</strong> $0
+  <strong>Status:</strong> ✅ Production Ready | <strong>Versioning:</strong> Automatic (see below) | <strong>Cost:</strong> $0
 </p>
 
 <p align="center">
