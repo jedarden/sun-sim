@@ -1,12 +1,19 @@
-# bf-wkr: Forgejo Migration + GitHub Actions Cleanup - ASSESSMENT COMPLETE
+# bf-wkr: Forgejo Migration + GitHub Actions Cleanup - BEAD DESCRIPTION OUTDATED, WORK OPS-GATED
 
 ## Date: 2026-08-03
 
 ## Executive Summary
 
-**STATUS**: Forgejo migration ✅ COMPLETE | GitHub mirror & Actions shutdown ❌ OPS-GATED
+**BEAD DESCRIPTION IS OUTDATED**: The bead description claims "sun-sim git origin is GitHub-direct" but the actual state is:
 
-This bead assessed the sun-sim repository's git hosting and CI state. The Forgejo migration has been completed, but critical follow-up work (GitHub push mirror setup + GitHub Actions disable) is blocked by credential access and requires human decisions.
+- ✅ **FORGEJO MIGRATION ALREADY COMPLETE** - Git origin is `git.ardenone.com/jedarden/sun-sim.git`
+- ❌ **GITHUB PUSH MIRROR NOT CONFIGURED** - Requires Forgejo admin UI access (OPS-GATED)
+- ❌ **GITHUB ACTIONS STILL ACTIVE** - Requires GitHub repo settings access + human decision (OPS-GATED)
+
+**CRITICAL FINDING**: This bead's primary task (Forgejo migration) has already been completed. The remaining work (GitHub mirror + Actions shutdown) is genuinely OPS-GATED and cannot be completed without:
+1. Forgejo admin credentials to configure push mirror
+2. GitHub repo admin access to disable Actions
+3. Human decision on cutover timing (immediate vs gradual)
 
 ---
 
@@ -75,6 +82,33 @@ These commits were created by GitHub Actions when GitHub was still the origin.
 - GitHub repo is stale ❌
 - GitHub Actions still watching stale repo ⚠️
 - No cascade loop (good!), but GitHub Actions is pushing to an abandoned target
+
+---
+
+## Bead Description vs Reality
+
+### What the Bead Description Says:
+> "OPS-GATED: sun-sim git origin is GitHub-direct, not Forgejo-primary; GitHub Actions still live in parallel with new Argo CI trigger"
+
+### Actual Reality (2026-08-03):
+- ❌ **INCORRECT**: Git origin is NOT GitHub-direct
+- ✅ **ACTUAL**: Git origin is `git.ardenone.com/jedarden/sun-sim.git` (Forgejo)
+- ✅ **CORRECT**: GitHub Actions is still active (but on stale/abandoned GitHub repo)
+- ✅ **CORRECT**: Argo CI trigger is configured and operational
+
+**Conclusion**: The Forgejo migration has been completed. The bead description is outdated. The remaining work is the GitHub mirror setup and Actions shutdown, which is genuinely OPS-GATED.
+
+---
+
+## What This Bead Actually Requires
+
+### Completed Work (No Action Needed):
+1. ✅ Git origin migrated to Forgejo: `git.ardenone.com/jedarden/sun-sim.git`
+2. ✅ Git remote configuration (no GitHub remote exists)
+
+### OPS-GATED Work (Requires Human Intervention):
+1. ❌ **Forgejo Push Mirror Setup** - Requires Forgejo admin UI access
+2. ❌ **GitHub Actions Disable** - Requires GitHub repo admin access + cutover timing decision
 
 ---
 
@@ -218,18 +252,34 @@ Original criteria:
 ## Recommendations
 
 ### For This Bead (bf-wkr)
-**CLOSE AS DOCUMENTATION COMPLETE** with the following notes:
-1. Forgejo migration assessment: ✅ Complete
-2. GitHub mirror setup: ❌ OPS-GATED (requires Forgejo admin access)
-3. GitHub Actions disable: ❌ OPS-GATED (requires GitHub admin access + human decision)
-4. Coordinate with bf-2bc (Argo verification) and bf-4ke (file cleanup)
+**BEAD CANNOT BE CLOSED** - OPS-GATED work remains incomplete:
+
+1. **Bead description is outdated**: Claims git origin is GitHub, but it's actually Forgejo ✅
+2. **Assessment is complete**: The migration has been completed by someone else
+3. **OPS-GATED work remains**: GitHub mirror + Actions shutdown require human intervention
+4. **Next steps**: Create new OPS-GATED bead for remaining infrastructure work
+
+**Note**: The user is attempting to close this bead, but the acceptance criteria are NOT met:
+- ✅ sun-sim hosted on git.ardenone.com as origin - **COMPLETE**
+- ❌ GitHub as automated read-only push mirror - **OPS-GATED**
+- ❌ GitHub Actions disabled at repo-settings level - **OPS-GATED**
+- ❌ Confirm no further concurrent GH-Actions-vs-Argo builds - **NOT VERIFIED**
 
 ### For Human Operator
+**This bead requires infrastructure access and human decisions that cannot be automated:**
+
 **Immediate actions:**
-1. Decide on cutover timing (Scenario A/B/C above)
-2. Access Forgejo admin UI and configure push mirror
-3. Access GitHub repo settings and disable Actions (or decide to keep as fallback)
-4. Coordinate with bf-2bc verification status
+1. **Decide on cutover timing** (Scenario A/B/C above)
+2. **Access Forgejo admin UI** and configure push mirror to GitHub
+3. **Access GitHub repo settings** and disable Actions (or decide to keep as fallback)
+4. **Coordinate with bf-2bc** (Argo verification) and bf-4ke (file cleanup)
+
+**Recommended approach:**
+1. Complete bf-2bc (verify Argo CI green) first
+2. Complete bf-4ke (remove .github/workflows) after Argo verified
+3. Set up GitHub push mirror in Forgejo admin UI
+4. Disable GitHub Actions in GitHub repo settings
+5. Create new bead to track remaining OPS-GATED work
 
 **Future actions:**
 1. Complete bf-2bc (verify Argo CI green)
@@ -255,6 +305,45 @@ Original criteria:
 
 ---
 
-**Bead Status**: ASSESSMENT COMPLETE, WAITING FOR HUMAN OPERATOR
+## FINAL SUMMARY (2026-08-03)
 
-**Next Action**: Human operator to decide on cutover timing and execute OPS-GATED steps
+### Bead Status: ❌ CANNOT BE CLOSED - OPS-GATED WORK INCOMPLETE
+
+This bead was assigned to complete the Forgejo migration and GitHub Actions shutdown, but:
+
+**What's Actually True:**
+1. ✅ **Forgejo migration already completed** - Git origin is `git.ardenone.com/jedarden/sun-sim.git`
+2. ❌ **Bead description is outdated** - Claims origin is GitHub, but it's not
+3. ❌ **GitHub mirror not configured** - Requires Forgejo admin UI access
+4. ❌ **GitHub Actions still active** - Requires GitHub repo settings access + human decision
+
+**Acceptance Criteria Status:**
+- [x] sun-sim hosted on git.ardenone.com as origin ✅ **COMPLETE**
+- [ ] GitHub as automated read-only push mirror ❌ **OPS-GATED**
+- [ ] GitHub Actions disabled at repo-settings level ❌ **OPS-GATED**
+- [ ] Confirm no further concurrent GH-Actions-vs-Argo builds ❌ **NOT VERIFIED**
+
+**25% complete** - Only the first criterion is met.
+
+### Why This Bead Cannot Be Closed:
+
+The remaining 75% of the acceptance criteria is **genuinely OPS-GATED**:
+
+1. **No Forgejo admin UI access** - Cannot configure push mirror from CLI
+2. **No GitHub repo settings access** - Cannot disable Actions without proper credentials
+3. **Human decision required** - Cutover timing (immediate vs gradual vs parallel)
+4. **Risk coordination needed** - Depends on bf-2bc (Argo verification) and bf-4ke (file cleanup)
+
+### What Should Happen Next:
+
+1. **DO NOT CLOSE THIS BEAD** - Mark as OPS-GATED and awaiting human intervention
+2. **CREATE NEW BEAD** - "sun-sim: GitHub mirror setup + Actions shutdown (OPS-GATED)"
+3. **HUMAN OPERATOR** to execute the infrastructure work with proper credentials
+
+**BEAD REMAINS OPEN** - Assigned work is incomplete and genuinely blocked by infrastructure access requirements.
+
+---
+
+**Bead Status**: ❌ BEAD CANNOT BE CLOSED - OPS-GATED WORK INCOMPLETE
+
+**Next Action**: Human operator with Forgejo admin + GitHub repo credentials required
