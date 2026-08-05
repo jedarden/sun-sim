@@ -16,8 +16,11 @@ class SunSimulatorHandler(SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        # Cache control
-        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        # Cache control: long-lived for vendor files, no-cache for everything else
+        if self.path.startswith('/vendor/'):
+            self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+        else:
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
         super().end_headers()
 
     def do_OPTIONS(self):
