@@ -11,13 +11,22 @@ import sys
 class SunSimulatorHandler(SimpleHTTPRequestHandler):
     """Custom handler with CORS enabled and proper MIME types"""
 
+    def send_response(self, code, message=None):
+        # Record the status so end_headers can tell real vendor responses
+        # from error responses
+        self._status_code = code
+        super().send_response(code, message)
+
     def end_headers(self):
         # Enable CORS for all requests
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        # Cache control: long-lived for vendor files, no-cache for everything else
-        if self.path.startswith('/vendor/'):
+        # Cache control: long-lived for vendor files, no-cache for everything
+        # else. Never stamp immutable on a non-200 — a 404 cached with
+        # max-age=31536000, immutable sits in CDNs (observed with Cloudflare
+        # on sunsim.jedarden.com 2026-08-20) until it expires.
+        if self.path.startswith('/vendor/') and getattr(self, '_status_code', 200) == 200:
             self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
         else:
             self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
