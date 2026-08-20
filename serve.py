@@ -46,6 +46,8 @@ def run_server(port=3000):
         os.chdir('/workspaces/ord-options-testing/sun-simulator')
     # else: stay in current directory
 
+    # Bind all interfaces — Docker maps the container port to the host, so
+    # binding localhost would leave the published port unreachable.
     server_address = ('0.0.0.0', port)
     httpd = HTTPServer(server_address, SunSimulatorHandler)
 
