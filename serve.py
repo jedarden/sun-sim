@@ -36,6 +36,19 @@ class SunSimulatorHandler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
 
+    def do_GET(self):
+        # Lightweight liveness probe so health checks don't transfer the
+        # full index.html on every interval
+        if self.path.split('?')[0] == '/healthz':
+            body = b'ok\n'
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        super().do_GET()
+
 def run_server(port=3000):
     """Start the HTTP server"""
     # Change to directory where files are located
