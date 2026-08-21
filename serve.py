@@ -36,6 +36,17 @@ class SunSimulatorHandler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
 
+    def do_HEAD(self):
+        # Keep the lightweight liveness endpoint useful to HEAD-based probes.
+        if self.path.split('?')[0] == '/healthz':
+            body = b'ok\n'
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            return
+        super().do_HEAD()
+
     def do_GET(self):
         # Lightweight liveness probe so health checks don't transfer the
         # full index.html on every interval
