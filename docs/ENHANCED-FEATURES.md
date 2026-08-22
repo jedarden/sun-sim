@@ -19,7 +19,7 @@ The Sun Simulator has been enhanced with advanced visualization features inspire
 - Golden color (#FFD700) with glow effect for visibility
 - 3px line width with 10px blur shadow
 
-**Code Location**: index.html:633-end (drawSunPath function)
+**Code Location**: index.html:629-end (drawSunPath function)
 
 **Key Features**:
 - Automatically repositions when map is panned/zoomed
@@ -51,7 +51,7 @@ The Sun Simulator has been enhanced with advanced visualization features inspire
 - Current time indicator (red vertical line)
 - Hour markers every 2 hours
 
-**Code Location**: index.html:652-725
+**Code Location**: index.html:932-1030
 
 **Transition Logic**:
 ```
@@ -79,7 +79,7 @@ The Sun Simulator has been enhanced with advanced visualization features inspire
 - Drag state management to prevent conflicts
 - Smooth updates during dragging
 
-**Code Location**: index.html:727-780
+**Code Location**: index.html:922-930
 
 **Behavior**:
 - Drag left/right to scrub through 24 hours
@@ -114,7 +114,7 @@ Four preset speeds available:
 - Automatic loop at midnight (wraps to next day)
 - Pause preserves exact time position
 
-**Code Location**: index.html:782-825
+**Code Location**: index.html:1033-1056
 
 **User Experience**:
 - Click play to watch sun movement
@@ -138,7 +138,7 @@ Four preset speeds available:
 - Instant visualization update
 - Highlights seasonal extremes
 
-**Code Location**: index.html:485-530
+**Code Location**: index.html:483-489
 
 **User Experience**:
 - Compare sun paths across seasons
@@ -167,7 +167,7 @@ Four preset speeds available:
 - Z-index management for layering
 - Smooth movement during animation
 
-**Code Location**: index.html:600-615
+**Code Location**: index.html:1033-1056
 
 **Behavior**:
 - Appears only during daylight hours
@@ -189,7 +189,7 @@ Four preset speeds available:
 - Synchronized with all other visualizations
 - Updates during scrubbing
 
-**Code Location**: index.html:350-365
+**Code Location**: index.html:51-55
 
 ---
 
@@ -389,27 +389,27 @@ When time/location changes:
 
 ### Key Functions
 
-**drawSunPath()** (index.html:633-end)
+**drawSunPath()** (index.html:629-end)
 - Renders golden arc overlay on map
 - Calculates sun positions throughout day
 - Converts azimuth/altitude to map coordinates
 
-**drawTimeline()** (index.html:652-725)
+**drawTimeline()** (index.html:932-1030)
 - Draws color-coded timeline canvas
 - Interpolates colors for twilight
 - Marks current time position
 
-**updateTimeFromCanvas()** (index.html:750-762)
+**updateTimeFromCanvas()** (index.html:922-930)
 - Converts mouse/touch X position to time
 - Updates currentDate variable
 - Triggers all visualizations to refresh
 
-**startAnimation()** (index.html:782-795)
+**startAnimation()** (index.html:1033-1056)
 - Begins time-lapse playback
 - Uses requestAnimationFrame for smooth 60 FPS
 - Applies speed multiplier
 
-**updateAll()** (index.html:827-845)
+**updateAll()** (index.html:1378-end)
 - Master update function
 - Refreshes all visualizations
 - Called on any state change

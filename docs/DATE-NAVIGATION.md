@@ -392,12 +392,12 @@ Understanding these rates helps you:
 
 ## 📖 Code Reference
 
-**HTML**: Lines 474-480 (Navigation buttons)
-**CSS**: Lines 269-287 (Button styling)
+**HTML**: Lines 472-481 (Navigation buttons)
+**CSS**: Lines 269-294 (Button styling)
 **JavaScript**:
-- Lines 1118-1121 (Button handlers)
-- Lines 1191+ (Keyboard shortcuts)
-- Lines 1239+ (changeDate function)
+- Lines 1118-1126 (Button handlers)
+- Lines 1191-1236 (Keyboard shortcuts)
+- Lines 1239-1252 (changeDate function)
 
 ---
 

@@ -355,16 +355,16 @@ const labelX = center.x + (radius * 0.7) * Math.cos(mathAngle); // 70% along lin
 
 ## 📖 Code Reference
 
-**Main Function**: `drawSunPath()` (index.html:633-end)
+**Main Function**: `drawSunPath()` (index.html:629-end)
 
 **Key Sections**:
-- Function start and center point visibility check: Lines 633+
-- Compass circle rendering: Lines 633+
-- Cardinal/intercardinal directions: Lines 633+
-- Sunrise line and label: Lines 633+
-- Sunset line and label: Lines 633+
-- Current sun position: Lines 633+
-- Center point marker: Lines 633+
+- Function start and center point visibility check: Lines 629+
+- Compass circle rendering: Lines 629+
+- Cardinal/intercardinal directions: Lines 629+
+- Sunrise line and label: Lines 629+
+- Sunset line and label: Lines 629+
+- Current sun position: Lines 629+
+- Center point marker: Lines 629+
 
 **Dependencies**:
 - SunCalc.js: Solar position calculations
