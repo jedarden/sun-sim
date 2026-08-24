@@ -274,3 +274,9 @@ For issues or questions:
 <p align="center">
   Made with ☀️ and ☕
 </p>
+
+---
+
+Part of [jedarden.com](https://jedarden.com) · Read the write-up: [jedarden.com/projects/sunsim/](https://jedarden.com/projects/sunsim/)
+
+*This GitHub repo is a read-only mirror of git.ardenone.com/jedarden/sun-sim — issues and PRs are welcome here either way.*
