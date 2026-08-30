@@ -1,0 +1,24 @@
+{
+  "name": "sun-sim",
+  "version": "0.1.14",
+  "description": "Interactive web application for visualizing sun position, sunrise/sunset times, and solar paths",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:install": "playwright install"
+  },
+  "keywords": [
+    "sun",
+    "solar",
+    "astronomy",
+    "sunrise",
+    "sunset",
+    "visualization"
+  ],
+  "author": "jedarden",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}
