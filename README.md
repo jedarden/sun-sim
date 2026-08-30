@@ -2,6 +2,8 @@
 
 Interactive web application for visualizing sun position, sunrise/sunset times, and solar paths for any location and date/time.
 
+**Live:** [sunsim.jedarden.com](https://sunsim.jedarden.com)
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Status](https://img.shields.io/badge/status-production-green.svg)
 ![Cost](https://img.shields.io/badge/cost-%240-success.svg)
@@ -44,12 +46,8 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 
 ```bash
 # Pull and run the pre-built image
-docker pull ghcr.io/jedarden/sun-sim:latest
-docker run -d -p 3000:3000 --name sun-sim ghcr.io/jedarden/sun-sim:latest
-
-# Or use a specific version
-docker pull ghcr.io/jedarden/sun-sim:0.1
-docker run -d -p 3000:3000 --name sun-sim ghcr.io/jedarden/sun-sim:0.1
+docker pull ghcr.io/jedarden/sun-sim:0.1.14
+docker run -d -p 3000:3000 --name sun-sim ghcr.io/jedarden/sun-sim:0.1.14
 ```
 
 Access at: **http://localhost:3000**
@@ -138,78 +136,16 @@ python -m http.server 3000
 
 ---
 
-## 🔄 Versioning
+## 🔄 Releases and deployment
 
-This project uses **automatic semantic versioning** with GitHub Actions:
+`VERSION` records the image version. The `sun-sim-build` Argo Workflow on
+`iad-ci` builds and publishes the pinned GHCR image; GitHub Actions is not used
+for this repository. The production deployment is managed through the public
+[`jedarden/declarative-config`](https://github.com/jedarden/declarative-config)
+GitOps repository.
 
-### Version Management
-
-- **VERSION file** - Contains the current semantic version (e.g., `0.1.0`)
-- **Automatic patch increment** - When code changes (index.html, serve.py, Dockerfile, docs/), the patch version auto-increments
-- **Manual version updates** - To bump minor or major versions, update the VERSION file manually
-
-### How It Works
-
-**Scenario 1: Code Changes**
-```bash
-# You modify index.html
-# Workflow detects code change
-# Auto-increments: 0.1.0 → 0.1.1
-# Creates tag: v0.1.1
-# Builds and publishes Docker image
-```
-
-**Scenario 2: Manual Version Update**
-```bash
-# You update VERSION file: 0.1.5 → 0.2.0
-# Workflow detects VERSION file change
-# Uses your version: 0.2.0
-# Creates tag: v0.2.0
-# Builds and publishes Docker image
-```
-
-**Scenario 3: Non-Code Changes**
-```bash
-# You update README.md only
-# Workflow detects no code or version changes
-# Skips build (no new Docker image)
-```
-
-### Versioning Rules
-
-- **Patch** (0.0.X) - Bug fixes, small changes (auto-incremented)
-- **Minor** (0.X.0) - New features, backwards-compatible (manual)
-- **Major** (X.0.0) - Breaking changes (manual)
-
----
-
-## 🌐 Deployment
-
-### Cloudflare Pages
-
-```bash
-npx wrangler pages publish . --project-name=sun-simulator
-```
-
-### Vercel
-
-```bash
-npx vercel --prod
-```
-
-### Netlify
-
-```bash
-npx netlify deploy --prod --dir=.
-```
-
-### GitHub Pages
-
-```bash
-git subtree push --prefix . origin gh-pages
-```
-
-All deployment options are **100% free** with no backend required.
+The application itself is static, so a source checkout can also be served by
+any static host using the commands in Quick Start.
 
 ---
 
@@ -268,7 +204,7 @@ For issues or questions:
 ---
 
 <p align="center">
-  <strong>Status:</strong> ✅ Production Ready | <strong>Versioning:</strong> Automatic (see below) | <strong>Cost:</strong> $0
+  <strong>Status:</strong> ✅ Production Ready | <strong>Release:</strong> 0.1.14 | <strong>Cost:</strong> $0
 </p>
 
 <p align="center">
