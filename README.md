@@ -46,8 +46,8 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 
 ```bash
 # Pull and run the pre-built image
-docker pull ghcr.io/jedarden/sun-sim:0.1.14
-docker run -d -p 3000:3000 --name sun-sim ghcr.io/jedarden/sun-sim:0.1.14
+docker pull ghcr.io/jedarden/sun-sim:0.1.15
+docker run -d -p 3000:3000 --name sun-sim ghcr.io/jedarden/sun-sim:0.1.15
 ```
 
 Access at: **http://localhost:3000**
@@ -204,7 +204,7 @@ For issues or questions:
 ---
 
 <p align="center">
-  <strong>Status:</strong> ✅ Production Ready | <strong>Release:</strong> 0.1.14 | <strong>Cost:</strong> $0
+  <strong>Status:</strong> ✅ Production Ready | <strong>Release:</strong> 0.1.15 | <strong>Cost:</strong> $0
 </p>
 
 <p align="center">
