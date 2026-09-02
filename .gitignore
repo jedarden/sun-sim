@@ -3,3 +3,6 @@
 *.db
 node_modules/
 .env
+
+# NEEDLE execution traces are local diagnostics.
+**/.beads/traces/
