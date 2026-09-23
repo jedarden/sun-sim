@@ -2,13 +2,14 @@
 
 ## Overview
 
-The repository has five complementary Playwright suites:
+The repository has six complementary Playwright suites:
 
 - `tests/solar-reference.spec.js` checks the vendored SunCalc results against fixed U.S. Naval Observatory (USNO) reference fixtures.
 - `tests/solar-calculations.spec.js` provides broader smoke coverage for equinox, seasonal, and polar UI states.
 - `tests/timezone.spec.js` verifies the browser-timezone display contract across DST transitions, UTC date boundaries, the date line, and both hemispheres.
 - `tests/geolocation-fallbacks.spec.js` verifies that GPS and Nominatim failures remain inline and non-blocking.
 - `tests/user-workflows.spec.js` exercises map selection, date controls, keyboard shortcuts, presets, timeline scrubbing, animation controls, and midnight rollover.
+- `tests/visual-overlays.spec.js` provides screenshot baselines for compass orientation and labels, solar bearings and marker states, the sun-path overlay, map repositioning, and the color-coded timeline.
 
 The reference suite is the accuracy contract. Its cases cover Quito at the equinox, New York and London near the June solstice, Sydney near the December solstice, and Tromsø during midnight sun and polar night. Each case includes coordinates, an exact UTC instant, solar altitude and true-north azimuth, sunrise, solar noon, sunset, and day length where applicable.
 
@@ -77,6 +78,14 @@ Run it directly with:
 
 ```bash
 npx playwright test tests/user-workflows.spec.js
+```
+
+## Visual overlay coverage
+
+The visual suite uses UTC scenes, mocked map tiles, and a fixed viewport so canvas screenshots are repeatable. It covers compass orientation, cardinal and intercardinal labels, sunrise and sunset bearings, the current-sun marker, the sun-path overlay as time advances, map repositioning, and the color-coded timeline. To refresh the checked-in baselines after an intentional visual change, run:
+
+```bash
+npx playwright test tests/visual-overlays.spec.js --update-snapshots
 ```
 
 ## Reference Data
