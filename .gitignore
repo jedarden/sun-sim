@@ -24,3 +24,7 @@ node_modules/
 .beads/*.temp
 .beads/*.journal
 .br_recovery/
+
+# Playwright run artifacts (regenerated on every test run)
+playwright-report/
+test-results/

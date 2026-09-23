@@ -123,6 +123,8 @@ The frame-time budget is a p95 interval of at most 20ms, with no more than 5% of
 
 The reference run on 2026-09-23 used headless Chromium 151.0.7922.173. All 8 cases passed: average frame rate was 58–60 FPS and p95 frame intervals were 16.7–16.8ms. The result is an environment-specific validation of the documented 60 FPS target, not a guarantee for every device or browser.
 
+An independent repeat run on 2026-09-23 (same host and browser build, executed as part of bead sunsim-fe97aa6b) reproduced the result: all 8 cases passed at 60.0 FPS with p95 frame intervals of 16.7–16.8ms on both profiles, well inside the 20ms budget. The check is therefore repeatable, not a one-off measurement.
+
 ## Reference Data
 
 All reference values come from the USNO Astronomical Applications Department APIs:
