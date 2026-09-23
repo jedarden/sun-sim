@@ -1242,7 +1242,11 @@
             if (unit === 'day') {
                 newDate.setDate(newDate.getDate() + amount);
             } else if (unit === 'month') {
+                const day = newDate.getDate();
+                newDate.setDate(1);
                 newDate.setMonth(newDate.getMonth() + amount);
+                const lastDay = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0).getDate();
+                newDate.setDate(Math.min(day, lastDay));
             }
 
             currentDate = newDate;
@@ -1258,9 +1262,11 @@
                 dateFormat: 'Y-m-d',
                 onChange: function(selectedDates) {
                     if (selectedDates.length > 0) {
-                        currentDate.setFullYear(selectedDates[0].getFullYear());
-                        currentDate.setMonth(selectedDates[0].getMonth());
-                        currentDate.setDate(selectedDates[0].getDate());
+                        currentDate.setFullYear(
+                            selectedDates[0].getFullYear(),
+                            selectedDates[0].getMonth(),
+                            selectedDates[0].getDate()
+                        );
                         updateAll();
                     }
                 }
@@ -1379,10 +1385,25 @@
                 currentDate.toLocaleDateString('en-US', options);
         }
 
+        function syncDatePicker() {
+            if (!datePicker) return;
+
+            const selectedDate = datePicker.selectedDates[0];
+            const currentDay = selectedDate
+                && currentDate.getFullYear() === selectedDate.getFullYear()
+                && currentDate.getMonth() === selectedDate.getMonth()
+                && currentDate.getDate() === selectedDate.getDate();
+
+            if (!currentDay) {
+                datePicker.setDate(currentDate, false);
+            }
+        }
+
         function updateAll() {
             updateLocation();
             updateSunInfo();
             updateHeaderTime();
+            syncDatePicker();
             drawTimeline();
             drawSunPath();
         }

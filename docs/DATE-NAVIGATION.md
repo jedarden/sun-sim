@@ -230,17 +230,15 @@ function changeDate(amount, unit) {
 **Month Navigation**:
 ```javascript
 if (unit === 'month') {
+    const day = newDate.getDate();
+    newDate.setDate(1);
     newDate.setMonth(newDate.getMonth() + amount);
+    const lastDay = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0).getDate();
+    newDate.setDate(Math.min(day, lastDay));
 }
 ```
 
-### Smart Month Handling
-
-JavaScript's Date object automatically handles:
-- Month boundaries (Jan 31 + 1 day = Feb 1)
-- Year boundaries (Dec 31 + 1 day = Jan 1 next year)
-- Leap years (Feb 28 + 1 day = Feb 29 in leap years)
-- Month length variations (March 31 + 1 month = April 30, not May 1)
+Month navigation clamps the day to the last valid day of the target month. This keeps January 31 → February 28 (or February 29 in a leap year) instead of overflowing into March.
 
 ### Keyboard Event Prevention
 
@@ -324,6 +322,7 @@ Buttons "press down" when clicked for tactile feedback.
 - When changing dates, the **time of day is preserved**
 - Example: If it's 3:45 PM on June 15, pressing **Up Arrow** gives June 16 at 3:45 PM
 - Useful for comparing same time across different dates
+- Across a DST transition, the wall-clock time is preserved while the elapsed interval is 23 or 25 hours
 
 ---
 

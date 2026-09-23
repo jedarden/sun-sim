@@ -134,7 +134,7 @@ Four preset speeds available:
 
 **Technical Implementation**:
 - One-click date change
-- Preserves current time of day
+- Sets the selected date to 12:00 PM
 - Instant visualization update
 - Highlights seasonal extremes
 
@@ -185,7 +185,7 @@ Four preset speeds available:
 
 **Technical Implementation**:
 - Real-time update during animations
-- 12-hour format with AM/PM
+- 12-hour format with AM/PM in the browser's local timezone
 - Synchronized with all other visualizations
 - Updates during scrubbing
 

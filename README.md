@@ -2,6 +2,8 @@
 
 Interactive web application for visualizing sun position, sunrise/sunset times, and solar paths for any location and date/time.
 
+**Timezone behavior:** Solar calculations use absolute instants and the selected coordinates, while all displayed dates and clock times use the browser's local timezone. Selecting a location does not switch the display to that location's timezone or to UTC; DST, UTC date boundaries, and the date line are covered by `tests/timezone.spec.js`.
+
 **Live:** [sunsim.jedarden.com](https://sunsim.jedarden.com)
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
