@@ -2,7 +2,7 @@
 
 ## Overview
 
-The repository has six complementary Playwright suites:
+The repository has seven complementary Playwright suites:
 
 - `tests/solar-reference.spec.js` checks the vendored SunCalc results against fixed U.S. Naval Observatory (USNO) reference fixtures.
 - `tests/solar-calculations.spec.js` provides broader smoke coverage for equinox, seasonal, and polar UI states.
@@ -10,6 +10,7 @@ The repository has six complementary Playwright suites:
 - `tests/geolocation-fallbacks.spec.js` verifies that GPS and Nominatim failures remain inline and non-blocking.
 - `tests/user-workflows.spec.js` exercises map selection, date controls, keyboard shortcuts, presets, timeline scrubbing, animation controls, and midnight rollover.
 - `tests/visual-overlays.spec.js` provides screenshot baselines and functional assertions for compass orientation and labels, equinox and polar bearing states, marker visibility, redraw/resize behavior, the sun-path overlay, map repositioning, and the color-coded timeline.
+- `tests/performance.spec.js` measures native animation-frame cadence for map overlays, sun-path rendering, timeline dragging, and animation at desktop and mobile viewports.
 
 The reference suite is the accuracy contract. Its cases cover Quito at the equinox, New York and London near the June solstice, Sydney near the December solstice, and Tromsø during midnight sun and polar night. Each case includes coordinates, an exact UTC instant, solar altitude and true-north azimuth, sunrise, solar noon, sunset, and day length where applicable.
 
@@ -87,6 +88,20 @@ The visual suite uses UTC scenes, mocked map tiles, and a fixed viewport so canv
 ```bash
 npx playwright test tests/visual-overlays.spec.js --update-snapshots
 ```
+
+## Rendering performance check
+
+Run the repeatable rendering check with:
+
+```bash
+npm run test:performance
+```
+
+The check uses the browser's native `requestAnimationFrame` clock, discards a 12-frame warm-up, and records 60 frames for each workload. Map tiles and reverse-geocoding responses are mocked so network timing does not determine the result. The desktop profile is 1280×720 with mouse input; the mobile profile is 390×844 with touch input. Both use a device-pixel ratio of 1 and UTC.
+
+The frame-time budget is a p95 interval of at most 20ms, with no more than 5% of sampled frames exceeding 20ms. The check covers map movement and overlay synchronization, direct sun-path redraws, timeline mouse/touch dragging, and the real animation loop. It also verifies that animation advances the application clock.
+
+The reference run on 2026-09-23 used headless Chromium 151.0.7922.173. All 8 cases passed: average frame rate was 58–60 FPS and p95 frame intervals were 16.7–16.8ms. The result is an environment-specific validation of the documented 60 FPS target, not a guarantee for every device or browser.
 
 ## Reference Data
 

@@ -158,6 +158,7 @@ any static host using the commands in Quick Start.
 - 🧭 [Compass Rose Feature](docs/COMPASS-ROSE-FEATURE.md) - Compass visualization guide
 - 📅 [Date Navigation](docs/DATE-NAVIGATION.md) - Navigation controls and shortcuts
 - ⚡ [Enhanced Features](docs/ENHANCED-FEATURES.md) - Advanced capabilities
+- Testing and performance notes: [docs/notes/testing.md](docs/notes/testing.md)
 
 ---
 
@@ -169,9 +170,11 @@ any static host using the commands in Quick Start.
 | ⏱️ Timing Accuracy | ±2 minutes against the USNO reference fixtures |
 | 🚀 Load Time | < 2.1 seconds |
 | 📦 Bundle Size | ~11KB (gzipped) |
-| 🎬 Frame Rate | 58-60 FPS |
+| 🎬 Frame Rate | 58–60 FPS in the repeatable rendering check; p95 frame time ≤20ms |
 
 The accuracy figures are fixture-validated bounds for the locations and dates in `tests/fixtures/solar-references.json`; they are not guarantees for every coordinate, date, or atmospheric condition. The position fixture checks the unrounded SunCalc result, while the UI displays angles to one decimal place.
+
+The rendering check is in `tests/performance.spec.js` and can be run with `npm run test:performance`. It samples native `requestAnimationFrame` timing after warm-up at 1280×720 and 390×844 with a device-pixel ratio of 1, mocking map tiles and reverse geocoding for repeatability. It covers map overlay updates, sun-path redraws, mouse/touch timeline dragging, and animation. The budget is a p95 frame interval of at most 20ms and no more than 5% of frames over 20ms. A reference run in headless Chromium 151.0.7922.173 on 2026-09-23 passed all 8 cases at 58–60 FPS with p95 intervals of 16.7–16.8ms.
 
 ---
 
