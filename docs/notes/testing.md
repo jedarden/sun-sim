@@ -97,7 +97,7 @@ Run the repeatable rendering check with:
 npm run test:performance
 ```
 
-The check uses the browser's native `requestAnimationFrame` clock, discards a 12-frame warm-up, and records 60 frames for each workload. Map tiles and reverse-geocoding responses are mocked so network timing does not determine the result. The desktop profile is 1280×720 with mouse input; the mobile profile is 390×844 with touch input. Both use a device-pixel ratio of 1 and UTC.
+The check uses the browser's native `requestAnimationFrame` clock, discards a 12-frame warm-up, and records 60 frames for each workload. Map tiles and reverse-geocoding responses are mocked so network timing does not determine the result. The desktop profile is 1280×720 with mouse input; the mobile profile is 390×844 with touch input. Both use a device-pixel ratio of 1 and UTC. The Playwright test server uses port 3010 by default; set `SUN_SIM_TEST_PORT` when running parallel checks.
 
 The frame-time budget is a p95 interval of at most 20ms, with no more than 5% of sampled frames exceeding 20ms. The check covers map movement and overlay synchronization, direct sun-path redraws, timeline mouse/touch dragging, and the real animation loop. It also verifies that animation advances the application clock.
 
