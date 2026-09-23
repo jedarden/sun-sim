@@ -22,9 +22,9 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 
 🗺️ **Interactive Map** - Pan and zoom to select any location worldwide
 
-📍 **GPS Location Button** - One-click location detection using browser geolocation API
+📍 **GPS Location Button** - One-click location detection using browser geolocation API, with an inline fallback when permission or location is unavailable
 
-🏙️ **Automatic City Detection** - Reverse geocoding with Nominatim to display location names
+🏙️ **Automatic City Detection** - Reverse geocoding with Nominatim to display location names, with timeout/rate-limit/no-result fallbacks and visible attribution
 
 📅 **Date Navigation** - Arrow keys and buttons to scroll through the year
 
@@ -154,6 +154,7 @@ any static host using the commands in Quick Start.
 ## 📚 Documentation
 
 - 📖 [Architecture](docs/architecture.md) - System design and technical details
+- 📍 [Geolocation failure behavior](docs/GEOCODING-FALLBACKS.md) - GPS and Nominatim error, fallback, and attribution policy
 - 🧭 [Compass Rose Feature](docs/COMPASS-ROSE-FEATURE.md) - Compass visualization guide
 - 📅 [Date Navigation](docs/DATE-NAVIGATION.md) - Navigation controls and shortcuts
 - ⚡ [Enhanced Features](docs/ENHANCED-FEATURES.md) - Advanced capabilities

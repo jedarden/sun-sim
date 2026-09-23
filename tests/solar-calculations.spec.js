@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.use({ timezoneId: 'UTC' });
+
 /**
  * Smoke tests for solar calculation correctness
  *

@@ -2,11 +2,12 @@
 
 ## Overview
 
-The repository has three complementary Playwright suites:
+The repository has four complementary Playwright suites:
 
 - `tests/solar-reference.spec.js` checks the vendored SunCalc results against fixed U.S. Naval Observatory (USNO) reference fixtures.
 - `tests/solar-calculations.spec.js` provides broader smoke coverage for equinox, seasonal, and polar UI states.
 - `tests/timezone.spec.js` verifies the browser-timezone display contract across DST transitions, UTC date boundaries, the date line, and both hemispheres.
+- `tests/geolocation-fallbacks.spec.js` verifies that GPS and Nominatim failures remain inline and non-blocking.
 
 The reference suite is the accuracy contract. Its cases cover Quito at the equinox, New York and London near the June solstice, Sydney near the December solstice, and Tromsø during midnight sun and polar night. Each case includes coordinates, an exact UTC instant, solar altitude and true-north azimuth, sunrise, solar noon, sunset, and day length where applicable.
 
@@ -51,6 +52,20 @@ The timezone suite uses Playwright's `timezoneId` setting to run the same page u
 
 ```bash
 npx playwright test tests/timezone.spec.js
+```
+
+## Geolocation and Nominatim failures
+
+The geolocation suite runs with mocked browser location errors and mocked
+Nominatim responses. It verifies permission denial, unavailable positions,
+timeouts, HTTP 429 rate limits, and no-result payloads. Each case checks the
+inline status and `Custom Location` fallback, visible Nominatim/OpenStreetMap
+attribution, and that the date navigation and solar controls remain usable.
+
+Run it directly with:
+
+```bash
+npx playwright test tests/geolocation-fallbacks.spec.js
 ```
 
 ## Reference Data
