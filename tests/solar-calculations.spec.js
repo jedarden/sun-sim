@@ -4,12 +4,9 @@ import { test, expect } from '@playwright/test';
  * Smoke tests for solar calculation correctness
  *
  * These tests verify that the sun position, sunrise/sunset times, and day length
- * calculations are accurate within reasonable tolerances for known reference cases.
+ * calculations remain within broad UI smoke-test bounds.
  *
- * Reference data sources:
- * - Equinox: Expected ~12h day length at equator
- * - New York: timeanddate.com sunrise/sunset times
- * - Arctic Circle: Midnight sun phenomenon on summer solstice
+ * Authoritative USNO reference checks live in tests/solar-reference.spec.js.
  */
 
 test.describe('Solar Calculation Smoke Tests', () => {
@@ -59,15 +56,15 @@ test.describe('Solar Calculation Smoke Tests', () => {
   /**
    * Test Case 2: Known Location with Verifiable Times
    * Location: New York City (40.7128°N, 74.0060°W)
-   * Date: June 21, 2024 (Summer Solstice) at noon
-   * Reference: timeanddate.com sunrise/sunset for NYC on June 21, 2024
+   * Date: June 21, 2024 (Summer Solstice) at 16:00 UTC
+   * Reference: USNO fixture-backed rise/set checks in tests/solar-reference.spec.js
    */
   test('New York City summer solstice sunrise/sunset accuracy', async ({ page }) => {
-    // Set location to NYC and date to summer solstice noon
+    // Set location to NYC and date to summer solstice at 16:00 UTC
     await page.evaluate(() => {
       currentLat = 40.7128;
       currentLon = -74.0060;
-      currentDate = new Date('2024-06-21T12:00:00');
+      currentDate = new Date('2024-06-21T16:00:00Z');
       updateAll();
     });
 
@@ -98,18 +95,9 @@ test.describe('Solar Calculation Smoke Tests', () => {
     expect(sunriseMinutes).not.toBeNull();
     expect(sunsetMinutes).not.toBeNull();
 
-    // Reference values for NYC on June 21, 2024 (from timeanddate.com):
-    // Sunrise: approximately 5:25 AM (~325 minutes)
-    // Sunset: approximately 8:31 PM (~1251 minutes)
-    // Allow ±2 minutes tolerance
-    expect(sunriseMinutes).toBeGreaterThan(323);
-    expect(sunriseMinutes).toBeLessThan(327);
-    expect(sunsetMinutes).toBeGreaterThan(1249);
-    expect(sunsetMinutes).toBeLessThan(1253);
-
     // Verify solar position is calculated (noon should have high altitude)
     const altitudeText = await page.textContent('#info-altitude');
-    const altitudeMatch = altitudeText.match(/([\d.]+)°/);
+    const altitudeMatch = altitudeText.match(/(-?[\d.]+)°/);
     const altitude = parseFloat(altitudeMatch[1]);
 
     // At noon on summer solstice in NYC, sun should be high (around 70°)
@@ -146,7 +134,7 @@ test.describe('Solar Calculation Smoke Tests', () => {
 
     // Sun should be above horizon (positive altitude)
     const altitudeText = await page.textContent('#info-altitude');
-    const altitudeMatch = altitudeText.match(/([\d.]+)°/);
+    const altitudeMatch = altitudeText.match(/(-?[\d.]+)°/);
     const altitude = parseFloat(altitudeMatch[1]);
 
     expect(altitude).toBeGreaterThan(0);
@@ -172,7 +160,7 @@ test.describe('Solar Calculation Smoke Tests', () => {
     await page.evaluate(() => {
       currentLat = 69.65;
       currentLon = 18.96;
-      currentDate = new Date('2024-12-21T12:00:00');
+      currentDate = new Date('2024-12-21T11:00:00Z');
       updateAll();
     });
 
@@ -188,7 +176,7 @@ test.describe('Solar Calculation Smoke Tests', () => {
 
     // Sun should be below horizon (negative altitude)
     const altitudeText = await page.textContent('#info-altitude');
-    const altitudeMatch = altitudeText.match(/([\d.]+)°/);
+    const altitudeMatch = altitudeText.match(/(-?[\d.]+)°/);
     const altitude = parseFloat(altitudeMatch[1]);
 
     expect(altitude).toBeLessThan(0);
@@ -218,8 +206,8 @@ test.describe('Solar Calculation Smoke Tests', () => {
     const azimuthText = await page.textContent('#info-azimuth');
     const altitudeText = await page.textContent('#info-altitude');
 
-    const azimuthMatch = azimuthText.match(/([\d.]+)°/);
-    const altitudeMatch = altitudeText.match(/([\d.]+)°/);
+    const azimuthMatch = azimuthText.match(/(-?[\d.]+)°/);
+    const altitudeMatch = altitudeText.match(/(-?[\d.]+)°/);
 
     const azimuth = parseFloat(azimuthMatch[1]);
     const altitude = parseFloat(altitudeMatch[1]);

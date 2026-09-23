@@ -229,8 +229,8 @@ mathAngle = (90° - compassBearing) * π/180
 - **Frame rate**: 60 FPS during animations
 
 ### Calculations
-- **Azimuth precision**: ±0.01° (SunCalc library)
-- **Time precision**: ±1 minute
+- **Azimuth precision**: ±0.3° in the checked USNO reference cases
+- **Time precision**: ±2 minutes in the checked USNO reference cases
 - **Coordinate conversion**: Math.PI precision (radians)
 
 ### Browser Compatibility

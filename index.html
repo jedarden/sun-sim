@@ -695,8 +695,8 @@
 
             // Get sunrise and sunset data
             const times = SunCalc.getTimes(currentDate, currentLat, currentLon);
-            const sunrisePos = times.sunrise ? SunCalc.getPosition(times.sunrise, currentLat, currentLon) : null;
-            const sunsetPos = times.sunset ? SunCalc.getPosition(times.sunset, currentLat, currentLon) : null;
+            const sunrisePos = isValidDate(times.sunrise) ? SunCalc.getPosition(times.sunrise, currentLat, currentLon) : null;
+            const sunsetPos = isValidDate(times.sunset) ? SunCalc.getPosition(times.sunset, currentLat, currentLon) : null;
 
             // Draw sunrise line
             if (sunrisePos) {
@@ -806,7 +806,7 @@
             const legendItems = [];
 
             // Add sunrise to legend if it exists
-            if (times.sunrise) {
+            if (isValidDate(times.sunrise)) {
                 legendItems.push({
                     color: 'rgba(255, 165, 0, 0.8)',
                     label: 'Sunrise',
@@ -815,7 +815,7 @@
             }
 
             // Add sunset to legend if it exists
-            if (times.sunset) {
+            if (isValidDate(times.sunset)) {
                 legendItems.push({
                     color: 'rgba(255, 69, 0, 0.8)',
                     label: 'Sunset',
@@ -938,8 +938,8 @@
 
             // Get sunrise/sunset times
             const times = SunCalc.getTimes(currentDate, currentLat, currentLon);
-            const sunrise = times.sunrise ? times.sunrise.getHours() + times.sunrise.getMinutes()/60 : 6;
-            const sunset = times.sunset ? times.sunset.getHours() + times.sunset.getMinutes()/60 : 18;
+            const sunrise = isValidDate(times.sunrise) ? times.sunrise.getHours() + times.sunrise.getMinutes()/60 : 6;
+            const sunset = isValidDate(times.sunset) ? times.sunset.getHours() + times.sunset.getMinutes()/60 : 18;
 
             // Draw color-coded timeline
             for (let i = 0; i < width; i++) {
@@ -1344,14 +1344,18 @@
             altEl.textContent = altitude.toFixed(1) + '°';
             altEl.className = 'info-value ' + (altitude > 0 ? 'sun-up' : 'sun-down');
 
-            document.getElementById('info-sunrise').textContent =
-                sunTimes.sunrise ? formatTime(sunTimes.sunrise) : 'No sunrise';
-            document.getElementById('info-noon').textContent =
-                sunTimes.solarNoon ? formatTime(sunTimes.solarNoon) : '--:--';
-            document.getElementById('info-sunset').textContent =
-                sunTimes.sunset ? formatTime(sunTimes.sunset) : 'No sunset';
+            const hasSunrise = isValidDate(sunTimes.sunrise);
+            const hasSolarNoon = isValidDate(sunTimes.solarNoon);
+            const hasSunset = isValidDate(sunTimes.sunset);
 
-            if (sunTimes.sunrise && sunTimes.sunset) {
+            document.getElementById('info-sunrise').textContent =
+                hasSunrise ? formatTime(sunTimes.sunrise) : 'No sunrise';
+            document.getElementById('info-noon').textContent =
+                hasSolarNoon ? formatTime(sunTimes.solarNoon) : '--:--';
+            document.getElementById('info-sunset').textContent =
+                hasSunset ? formatTime(sunTimes.sunset) : 'No sunset';
+
+            if (hasSunrise && hasSunset) {
                 const dayLength = (sunTimes.sunset - sunTimes.sunrise) / 1000 / 60;
                 const hours = Math.floor(dayLength / 60);
                 const minutes = Math.floor(dayLength % 60);
@@ -1383,8 +1387,12 @@
             drawSunPath();
         }
 
+        function isValidDate(date) {
+            return date instanceof Date && !Number.isNaN(date.getTime());
+        }
+
         function formatTime(date) {
-            if (!date || isNaN(date.getTime())) return '--:--';
+            if (!isValidDate(date)) return '--:--';
             const hours = date.getHours();
             const minutes = date.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';

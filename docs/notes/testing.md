@@ -2,95 +2,50 @@
 
 ## Overview
 
-The sun-sim repository includes automated smoke tests for solar calculation correctness using Playwright. These tests verify that the sun position, sunrise/sunset times, and day length calculations are accurate within reasonable tolerances for known reference cases.
+The repository has two complementary Playwright suites for solar calculations:
 
-## Test Coverage
+- `tests/solar-reference.spec.js` checks the vendored SunCalc results against fixed U.S. Naval Observatory (USNO) reference fixtures.
+- `tests/solar-calculations.spec.js` provides broader smoke coverage for equinox, seasonal, and polar UI states.
 
-The current test suite (`tests/solar-calculations.spec.js`) covers:
-
-1. **Equator on Equinox** - Validates that day length is approximately 12 hours at the equator on the vernal equinox (March 20, 2024)
-
-2. **New York City Summer Solstice** - Verifies sunrise/sunset times against timeanddate.com reference data for NYC on June 21, 2024, with ±2 minute tolerance
-
-3. **Arctic Circle Midnight Sun** - Tests that locations above the Arctic Circle (Tromsø, Norway) correctly display "24h (Midnight Sun)" on the summer solstice
-
-4. **Arctic Circle Polar Night** - Tests that locations above the Arctic Circle correctly display "0h (Polar Night)" on the winter solstice
-
-5. **Sun Position Calculations** - Verifies azimuth and altitude calculations at solar noon on the equinox
-
-6. **Seasonal Variation** - Validates that mid-latitude locations (London, UK) show realistic seasonal day length differences between summer and winter solstices
+The reference suite is the accuracy contract. Its cases cover Quito at the equinox, New York and London near the June solstice, Sydney near the December solstice, and Tromsø during midnight sun and polar night. Each case includes coordinates, an exact UTC instant, solar altitude and true-north azimuth, sunrise, solar noon, sunset, and day length where applicable.
 
 ## Running Tests
 
-### Prerequisites
-
-Install Node.js dependencies:
+Install dependencies and the Chromium browser once:
 
 ```bash
 npm install
-```
-
-Install Playwright browsers (only needed once):
-
-```bash
 npm run test:install
 ```
 
-**Note:** On NixOS or other non-standard Linux distributions, you may need to install additional system libraries for Chromium to run. On standard Linux distributions (Ubuntu, Debian, etc.) or in CI environments, the tests should run without additional dependencies.
-
-### Run Tests
+Run the suite headlessly:
 
 ```bash
-# Run tests headless (default)
 npm test
-
-# Run tests in headed mode (see browser window)
-npm run test:headed
-
-# Run tests in debug mode (with Playwright Inspector)
-npm run test:debug
 ```
 
-### Test Output
+Other Playwright modes are available through `npm run test:headed` and `npm run test:debug`.
 
-Test results are saved in `playwright-report/`:
-- `index.html` - Interactive HTML report with screenshots of failures
-- Run `npx playwright show-report` to view the report
+## Accuracy Contract
 
-## Test Tolerances
+The checked bounds are stored with the fixtures in `tests/fixtures/solar-references.json` and are enforced by the reference tests:
 
-The tests use reasonable tolerances that match the accuracy of the underlying SunCalc library:
+- **Position**: ±0.3° for the unrounded SunCalc result. The test separately verifies that the UI's one-decimal display is a rounding of that result.
+- **Timing**: ±2 minutes for sunrise, solar noon, sunset, and the displayed day-length minute.
 
-- **Time accuracy**: ±2 minutes for sunrise/sunset times (SunCalc claims ±1 minute)
-- **Angle accuracy**: ±5 degrees for sun position (SunCalc claims ±0.01°)
-- **Day length**: ±15 minutes for equinox tests (accounts for atmospheric refraction and definition variations)
+These are measured bounds for the six fixed cases against the vendored SunCalc 1.9.0 model, not a universal error guarantee for every location, date, or atmospheric condition. USNO publishes calculated rather than observed values; local weather and atmospheric refraction can change observed sunrise and sunset.
 
-## Reference Data Sources
+The tests set the browser timezone to UTC and request USNO times with `tz=0`. This keeps the fixture comparison independent of the machine running the tests. The application itself continues to display times in the browser's local timezone.
 
-Test reference values are derived from:
-- **Equinox**: Astronomical definition (~12h day at equator)
-- **New York City**: timeanddate.com sunrise/sunset times
-- **Arctic phenomena**: Established astronomical definitions of midnight sun and polar night
+## Reference Data
+
+All reference values come from the USNO Astronomical Applications Department APIs:
+
+- Position: `https://aa.usno.navy.mil/api/celnav`
+- Rise, set, and transit: `https://aa.usno.navy.mil/api/rstt/oneday`
+
+`tests/fixtures/solar-references.json` records the exact query URL, coordinates, UTC instant, and USNO fields used for every case. Position fixtures use `almanac_data.hc` for geometric altitude and `almanac_data.zn` for true-north azimuth. Rise/set fixtures use the USNO local clock values converted to UTC, retaining the source's whole-minute precision.
 
 ## Test Architecture
 
-The test suite uses Playwright to:
-1. Start the local development server (`python3 serve.py`)
-2. Load the application in a headless Chromium browser
-3. Set location, date, and time programmatically
-4. Read displayed values from the DOM
-5. Assert against expected reference values
-
-Tests deliberately use the actual browser DOM rather than unit testing the calculation functions directly, ensuring the full stack (SunCalc integration → UI rendering) works correctly.
-
-## Future Test Expansion
-
-The current tests are intentionally minimal "smoke tests" covering the most critical correctness claims. Future test additions could include:
-
-- **E2E flows**: User workflows (location search, time slider, animation controls)
-- **Visual regression**: Screenshot comparisons for sun path rendering
-- **Performance**: Calculation and rendering benchmarks
-- **Cross-browser**: Firefox, Safari, mobile browsers
-- **Accessibility**: Screen reader and keyboard navigation tests
-
-See `docs/architecture.md` section 7 for the full intended test strategy.
+The reference tests load the real page, set the application state, call `updateAll`, and read both the rendered values and the underlying SunCalc values. This verifies the complete path from the vendored library through the browser UI. Polar fixtures also verify that invalid rise/set dates render as `No sunrise` and `No sunset` rather than as placeholder clock values.

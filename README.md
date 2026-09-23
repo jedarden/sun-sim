@@ -34,7 +34,7 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 
 💰 **Zero Cost** - Free satellite imagery, no API keys required
 
-🎯 **High Accuracy** - SunCalc-powered solar calculations (±0.01° position, ±1 minute timing)
+🎯 **Reference-validated accuracy** - SunCalc 1.9.0 solar calculations (±0.3° position and ±2 minute rise/set in the USNO fixture suite)
 
 🔗 **GitHub Integration** - Repository link in header for easy access to source code
 
@@ -128,7 +128,7 @@ python -m http.server 3000
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| 📐 Solar Calculations | [SunCalc.js](https://github.com/mourner/suncalc) | ±0.01° accuracy |
+| 📐 Solar Calculations | [SunCalc.js](https://github.com/mourner/suncalc) | ±0.3° in the checked reference cases |
 | 🗺️ Interactive Maps | [Leaflet.js](https://leafletjs.com/) | Pan/zoom controls |
 | 🛰️ Satellite Imagery | [ESRI World Imagery](https://www.arcgis.com/) | Free high-res tiles |
 | 📅 Date Picker | [Flatpickr](https://flatpickr.js.org/) | Date selection |
@@ -162,11 +162,13 @@ any static host using the commands in Quick Start.
 
 | Metric | Result |
 |--------|--------|
-| 🎯 Position Accuracy | ±0.01° (SunCalc library) |
-| ⏱️ Timing Accuracy | ±1 minute (SunCalc library) |
+| 🎯 Position Accuracy | ±0.3° against the USNO reference fixtures |
+| ⏱️ Timing Accuracy | ±2 minutes against the USNO reference fixtures |
 | 🚀 Load Time | < 2.1 seconds |
 | 📦 Bundle Size | ~11KB (gzipped) |
 | 🎬 Frame Rate | 58-60 FPS |
+
+The accuracy figures are fixture-validated bounds for the locations and dates in `tests/fixtures/solar-references.json`; they are not guarantees for every coordinate, date, or atmospheric condition. The position fixture checks the unrounded SunCalc result, while the UI displays angles to one decimal place.
 
 ---
 

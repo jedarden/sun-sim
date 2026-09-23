@@ -20,7 +20,7 @@ The sun simulator provides real-time visualization of:
 - Location-specific solar data
 
 ### 1.2 Key Requirements
-- **Accuracy**: Astronomical calculations accurate to ±0.01°
+- **Accuracy**: Astronomical calculations within ±0.3° in the checked reference cases
 - **Performance**: Render updates at 60fps
 - **Global Coverage**: Support any location worldwide
 - **Responsiveness**: Mobile-first responsive design
@@ -62,7 +62,7 @@ The sun simulator provides real-time visualization of:
 **Rationale:**
 - SunCalc is industry-standard, battle-tested
 - Lightweight (5KB), no dependencies
-- Accurate to ±0.01° for sun position
+- Accurate to ±0.3° in the checked reference cases for sun position
 - Will extend with shadow ray-casting algorithms
 
 ### 2.2 Development Tools
@@ -293,8 +293,8 @@ class SunCalculator {
 ```
 
 **Calculation Accuracy:**
-- Position accuracy: ±0.01° (standard SunCalc)
-- Time accuracy: ±1 second
+- Position accuracy: ±0.3° in the checked reference cases (SunCalc 1.9.0)
+- Time accuracy: ±2 minutes in the checked reference cases
 - Valid date range: 1900-2100 (SunCalc limitation)
 
 #### ShadowCalculator.js
@@ -1620,7 +1620,7 @@ Pure client-side application, no backend.
 
 This architecture provides:
 
-✅ **Accuracy**: ±0.01° precision for sun calculations
+✅ **Accuracy**: ±0.3° fixture-validated position and ±2 minute timing bounds
 ✅ **Performance**: 60fps rendering, <100ms calculations
 ✅ **Scalability**: Client-side only, CDN-based distribution
 ✅ **Maintainability**: Modular design, comprehensive tests

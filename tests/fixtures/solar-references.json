@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "name": "U.S. Naval Observatory Astronomical Applications Department",
+    "positionEndpoint": "https://aa.usno.navy.mil/api/celnav",
+    "timesEndpoint": "https://aa.usno.navy.mil/api/rstt/oneday",
+    "retrieved": "2026-09-23",
+    "positionBasis": "USNO almanac_data.hc and almanac_data.zn; geometric altitude and true-north azimuth",
+    "timeBasis": "USNO local clock output with tz=0; whole-minute precision",
+    "timeZone": "UTC"
+  },
+  "tolerances": {
+    "positionDegrees": 0.3,
+    "timingMinutes": 2,
+    "basis": "Maximum observed difference for these fixtures from the vendored SunCalc 1.9.0 model"
+  },
+  "cases": [
+    {
+      "id": "quito-equinox",
+      "location": "Quito, Ecuador",
+      "latitude": 0,
+      "longitude": -78.5,
+      "date": "2024-03-20",
+      "timeUtc": "2024-03-20T15:00:00Z",
+      "condition": "equinox",
+      "reference": {
+        "azimuthDegrees": 89.661091,
+        "altitudeDegrees": 54.681512,
+        "sunriseUtc": "2024-03-20T11:18:00Z",
+        "solarNoonUtc": "2024-03-20T17:21:00Z",
+        "sunsetUtc": "2024-03-20T23:24:00Z",
+        "dayLengthMinutes": 726
+      },
+      "sourceQueries": {
+        "position": "https://aa.usno.navy.mil/api/celnav?date=2024-03-20&time=15:00&coords=0,-78.5",
+        "times": "https://aa.usno.navy.mil/api/rstt/oneday?date=2024-03-20&coords=0,-78.5&tz=0"
+      }
+    },
+    {
+      "id": "new-york-solstice",
+      "location": "New York City, United States",
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "date": "2024-06-21",
+      "timeUtc": "2024-06-21T16:00:00Z",
+      "condition": "summer solstice",
+      "reference": {
+        "azimuthDegrees": 140.433604,
+        "altitudeDegrees": 68.866499,
+        "sunriseUtc": "2024-06-21T09:25:00Z",
+        "solarNoonUtc": "2024-06-21T16:58:00Z",
+        "sunsetUtc": "2024-06-22T00:31:00Z",
+        "dayLengthMinutes": 906
+      },
+      "sourceQueries": {
+        "position": "https://aa.usno.navy.mil/api/celnav?date=2024-06-21&time=16:00&coords=40.7128,-74.006",
+        "times": "https://aa.usno.navy.mil/api/rstt/oneday?date=2024-06-21&coords=40.7128,-74.006&tz=0"
+      }
+    },
+    {
+      "id": "london-solstice",
+      "location": "London, United Kingdom",
+      "latitude": 51.5,
+      "longitude": -0.1,
+      "date": "2024-06-21",
+      "timeUtc": "2024-06-21T11:00:00Z",
+      "condition": "summer solstice",
+      "reference": {
+        "azimuthDegrees": 150.975384,
+        "altitudeDegrees": 59.479699,
+        "sunriseUtc": "2024-06-21T03:43:00Z",
+        "solarNoonUtc": "2024-06-21T12:02:00Z",
+        "sunsetUtc": "2024-06-21T20:21:00Z",
+        "dayLengthMinutes": 998
+      },
+      "sourceQueries": {
+        "position": "https://aa.usno.navy.mil/api/celnav?date=2024-06-21&time=11:00&coords=51.5,-0.1",
+        "times": "https://aa.usno.navy.mil/api/rstt/oneday?date=2024-06-21&coords=51.5,-0.1&tz=0"
+      }
+    },
+    {
+      "id": "sydney-solstice",
+      "location": "Sydney, Australia",
+      "latitude": -33.8688,
+      "longitude": 151.2093,
+      "date": "2024-12-21",
+      "timeUtc": "2024-12-21T03:00:00Z",
+      "condition": "southern-hemisphere summer solstice",
+      "reference": {
+        "azimuthDegrees": 301.201447,
+        "altitudeDegrees": 72.065361,
+        "sunriseUtc": "2024-12-20T18:41:00Z",
+        "solarNoonUtc": "2024-12-21T01:53:00Z",
+        "sunsetUtc": "2024-12-21T09:06:00Z",
+        "dayLengthMinutes": 865
+      },
+      "sourceQueries": {
+        "position": "https://aa.usno.navy.mil/api/celnav?date=2024-12-21&time=03:00&coords=-33.8688,151.2093",
+        "times": "https://aa.usno.navy.mil/api/rstt/oneday?date=2024-12-21&coords=-33.8688,151.2093&tz=0"
+      }
+    },
+    {
+      "id": "tromso-midnight-sun",
+      "location": "Tromsø, Norway",
+      "latitude": 69.6492,
+      "longitude": 18.9553,
+      "date": "2024-06-21",
+      "timeUtc": "2024-06-21T12:00:00Z",
+      "condition": "midnight sun",
+      "reference": {
+        "azimuthDegrees": 203.223868,
+        "altitudeDegrees": 42.496359,
+        "sunriseUtc": null,
+        "solarNoonUtc": "2024-06-21T10:46:00Z",
+        "sunsetUtc": null,
+        "dayLengthMinutes": null
+      },
+      "sourceQueries": {
+        "position": "https://aa.usno.navy.mil/api/celnav?date=2024-06-21&time=12:00&coords=69.6492,18.9553",
+        "times": "https://aa.usno.navy.mil/api/rstt/oneday?date=2024-06-21&coords=69.6492,18.9553&tz=0"
+      }
+    },
+    {
+      "id": "tromso-polar-night",
+      "location": "Tromsø, Norway",
+      "latitude": 69.6492,
+      "longitude": 18.9553,
+      "date": "2024-12-21",
+      "timeUtc": "2024-12-21T12:00:00Z",
+      "condition": "polar night",
+      "reference": {
+        "azimuthDegrees": 197.775019,
+        "altitudeDegrees": -4.125738,
+        "sunriseUtc": null,
+        "sunsetUtc": null,
+        "dayLengthMinutes": null
+      },
+      "sourceQueries": {
+        "position": "https://aa.usno.navy.mil/api/celnav?date=2024-12-21&time=12:00&coords=69.6492,18.9553",
+        "times": "https://aa.usno.navy.mil/api/rstt/oneday?date=2024-12-21&coords=69.6492,18.9553&tz=0"
+      }
+    }
+  ]
+}
