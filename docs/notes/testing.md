@@ -17,6 +17,13 @@ The reference suite is the accuracy contract. Its cases cover Quito at the equin
 
 ## Running Tests
 
+`npm test` is self-contained: `scripts/test.js` installs dependencies from
+`package-lock.json` when `node_modules` is missing and then invokes the locally
+installed `@playwright/test` CLI by explicit path. It never resolves
+`playwright` through `PATH`, so a bare checkout (or a host whose only
+`playwright` binary is an unrelated Python install that rejects the `test`
+subcommand) still runs the real suite.
+
 Install dependencies and the Chromium browser once:
 
 ```bash

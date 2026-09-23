@@ -3,11 +3,11 @@
   "version": "0.1.14",
   "description": "Interactive web application for visualizing sun position, sunrise/sunset times, and solar paths",
   "scripts": {
-    "test": "playwright test",
-    "test:performance": "playwright test tests/performance.spec.js",
-    "test:headed": "playwright test --headed",
-    "test:debug": "playwright test --debug",
-    "test:install": "playwright install"
+    "test": "node scripts/test.js",
+    "test:performance": "node scripts/test.js tests/performance.spec.js",
+    "test:headed": "node scripts/test.js --headed",
+    "test:debug": "node scripts/test.js --debug",
+    "test:install": "node node_modules/@playwright/test/cli.js install"
   },
   "keywords": [
     "sun",
