@@ -2,12 +2,13 @@
 
 ## Overview
 
-The repository has four complementary Playwright suites:
+The repository has five complementary Playwright suites:
 
 - `tests/solar-reference.spec.js` checks the vendored SunCalc results against fixed U.S. Naval Observatory (USNO) reference fixtures.
 - `tests/solar-calculations.spec.js` provides broader smoke coverage for equinox, seasonal, and polar UI states.
 - `tests/timezone.spec.js` verifies the browser-timezone display contract across DST transitions, UTC date boundaries, the date line, and both hemispheres.
 - `tests/geolocation-fallbacks.spec.js` verifies that GPS and Nominatim failures remain inline and non-blocking.
+- `tests/user-workflows.spec.js` exercises map selection, date controls, keyboard shortcuts, presets, timeline scrubbing, animation controls, and midnight rollover.
 
 The reference suite is the accuracy contract. Its cases cover Quito at the equinox, New York and London near the June solstice, Sydney near the December solstice, and Tromsø during midnight sun and polar night. Each case includes coordinates, an exact UTC instant, solar altitude and true-north azimuth, sunrise, solar noon, sunset, and day length where applicable.
 
@@ -66,6 +67,16 @@ Run it directly with:
 
 ```bash
 npx playwright test tests/geolocation-fallbacks.spec.js
+```
+
+## User workflow coverage
+
+The user workflow suite drives the documented controls in Chromium. It covers map dragging for location selection, all date navigation buttons and keyboard shortcuts, seasonal date presets, mouse and touch timeline scrubbing, play/pause behavior, every speed preset, and animation rollover across midnight.
+
+Run it directly with:
+
+```bash
+npx playwright test tests/user-workflows.spec.js
 ```
 
 ## Reference Data
