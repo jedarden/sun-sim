@@ -45,6 +45,82 @@ async function expectAppTime(page, expectedMinutes, tolerance = 1) {
   }, expectedMinutes)).toBeLessThanOrEqual(tolerance);
 }
 
+async function installAnimationClock(page) {
+  await page.evaluate(() => {
+    const callbacks = new Map();
+    let nextId = 1;
+
+    window.requestAnimationFrame = callback => {
+      const id = nextId++;
+      callbacks.set(id, callback);
+      return id;
+    };
+    window.cancelAnimationFrame = id => {
+      callbacks.delete(id);
+    };
+    window.__animationClock = {
+      step(timestamp) {
+        const entry = [...callbacks.entries()].find(([, callback]) => callback === animate);
+        if (!entry) return false;
+        const [id, callback] = entry;
+        callbacks.delete(id);
+        callback(timestamp);
+        return true;
+      },
+      pending() {
+        return [...callbacks.values()].filter(callback => callback === animate).length;
+      }
+    };
+  });
+}
+
+async function stepAnimationFrame(page, timestamp) {
+  const stepped = await page.evaluate(value => window.__animationClock.step(value), timestamp);
+  expect(stepped).toBe(true);
+}
+
+async function pendingAnimationFrames(page) {
+  return page.evaluate(() => window.__animationClock.pending());
+}
+
+async function expectSunDisplaySynchronized(page) {
+  const state = await page.evaluate(() => {
+    const position = SunCalc.getPosition(currentDate, currentLat, currentLon);
+    const bearing = toCompassBearing(position);
+    const altitude = position.altitude * 180 / Math.PI;
+    const center = {
+      x: sunPathCanvas.width / 2,
+      y: sunPathCanvas.height / 2
+    };
+    const markerPoint = compassPoint(bearing, center, 150 * 0.95);
+    const x = Math.round(markerPoint.x);
+    const y = Math.round(markerPoint.y);
+    const context = sunPathCanvas.getContext('2d');
+    const pixel = context.getImageData(x, y, 1, 1).data;
+
+    return {
+      actualAzimuth: document.querySelector('#info-azimuth').textContent,
+      expectedAzimuth: `${bearing.toFixed(1)}°`,
+      actualAltitude: document.querySelector('#info-altitude').textContent,
+      expectedAltitude: `${altitude.toFixed(1)}°`,
+      header: document.querySelector('#current-time-display').textContent,
+      expectedTime: formatTime(currentDate),
+      markerVisible: isSunMarkerVisible(position),
+      markerPixel: Array.from(pixel)
+    };
+  });
+
+  expect(state.actualAzimuth).toBe(state.expectedAzimuth);
+  expect(state.actualAltitude).toBe(state.expectedAltitude);
+  expect(state.header).toContain(state.expectedTime);
+  if (state.markerVisible) {
+    expect(state.markerPixel[0]).toBeGreaterThan(220);
+    expect(state.markerPixel[1]).toBeGreaterThan(170);
+    expect(state.markerPixel[2]).toBeLessThan(120);
+    expect(state.markerPixel[3]).toBeGreaterThan(0);
+  }
+}
+
 test.describe('Documented user workflows', () => {
   test.use({ timezoneId: 'UTC' });
 
@@ -155,29 +231,52 @@ test.describe('Documented user workflows', () => {
   });
 
   test('scrubs time by clicking and dragging the timeline', async ({ page }) => {
+    await installAnimationClock(page);
     await setAppDate(page, '2024-06-21T12:00:00.000Z');
     const timeline = page.locator('#timeline-canvas');
     const box = await timeline.boundingBox();
     expect(box).not.toBeNull();
 
+    await page.locator('#btn-play-pause').click();
+    await stepAnimationFrame(page, 1000);
+    await stepAnimationFrame(page, 1100);
+    expect((await appDate(page)).isPlaying).toBe(true);
+
     await timeline.click({ position: { x: box.width * 0.25, y: box.height / 2 } });
     await expectAppTime(page, 6 * 60);
+    expect((await appDate(page)).isPlaying).toBe(false);
+    await expect(page.locator('.play-label')).toHaveText('Play');
+    await expectSunDisplaySynchronized(page);
 
     await timeline.click({ position: { x: box.width * 0.75, y: box.height / 2 } });
     await expectAppTime(page, 18 * 60);
+    await expectSunDisplaySynchronized(page);
 
     await page.mouse.move(box.x + box.width * 0.25, box.y + box.height / 2);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * 0.8, box.y + box.height / 2, { steps: 10 });
     await page.mouse.up();
     await expectAppTime(page, 19 * 60 + 12, 2);
+    const released = await appDate(page);
+    expect(released.isPlaying).toBe(false);
+    await expectSunDisplaySynchronized(page);
+
+    await page.mouse.move(box.x + box.width * 0.9, box.y + box.height / 2);
+    await page.waitForTimeout(50);
+    expect((await appDate(page)).instant).toBe(released.instant);
   });
 
   test('scrubs the timeline with touch events', async ({ page }) => {
+    await installAnimationClock(page);
     await setAppDate(page, '2024-06-21T12:00:00.000Z');
     const timeline = page.locator('#timeline-canvas');
     const box = await timeline.boundingBox();
     expect(box).not.toBeNull();
+
+    await page.locator('#btn-play-pause').click();
+    await stepAnimationFrame(page, 1000);
+    await stepAnimationFrame(page, 1100);
+    expect((await appDate(page)).isPlaying).toBe(true);
 
     const client = await page.context().newCDPSession(page);
     const start = { x: box.x + box.width * 0.25, y: box.y + box.height / 2 };
@@ -200,54 +299,124 @@ test.describe('Documented user workflows', () => {
     }
 
     await expectAppTime(page, 18 * 60);
-    expect((await appDate(page)).value).toBe('2024-06-21');
+    const released = await appDate(page);
+    expect(released.value).toBe('2024-06-21');
+    expect(released.isPlaying).toBe(false);
+    await expect(page.locator('.play-label')).toHaveText('Play');
+    await expectSunDisplaySynchronized(page);
+
+    await page.mouse.move(box.x + box.width * 0.9, box.y + box.height / 2);
+    await page.waitForTimeout(50);
+    expect((await appDate(page)).instant).toBe(released.instant);
   });
 
-  test('selects every animation speed preset', async ({ page }) => {
-    await setAppDate(page, '2024-06-21T12:00:00.000Z');
-    const initial = (await appDate(page)).instant;
+  test('applies every documented animation speed preset', async ({ page }) => {
+    await installAnimationClock(page);
+    const cases = [
+      ['1x', 100],
+      ['30x', 180000],
+      ['60x', 360000],
+      ['2min', 720000]
+    ];
+    const playButton = page.locator('#btn-play-pause');
 
-    for (const speed of ['1x', '30x', '60x', '2min']) {
-      const button = page.locator(`.speed-btn[data-speed="${speed}"]`);
-      await button.click();
-      await expect(button).toHaveClass(/active/);
+    for (const [speed, expectedDelta] of cases) {
+      await setAppDate(page, '2024-06-21T12:00:00.000Z');
+      const speedButton = page.locator(`.speed-btn[data-speed="${speed}"]`);
+      await speedButton.click();
+      await expect(speedButton).toHaveClass(/active/);
       await expect(page.locator('.speed-btn.active')).toHaveCount(1);
       expect(await page.evaluate(() => currentSpeedId)).toBe(speed);
-    }
 
-    expect((await appDate(page)).instant).toBe(initial);
+      const start = await page.evaluate(() => currentDate.getTime());
+      await playButton.click();
+      expect(await pendingAnimationFrames(page)).toBe(1);
+      await stepAnimationFrame(page, 1000);
+      expect(await page.evaluate(() => currentDate.getTime())).toBe(start);
+      await stepAnimationFrame(page, 1100);
+      expect(await page.evaluate(() => currentDate.getTime())).toBe(start + expectedDelta);
+
+      await playButton.click();
+      expect(await pendingAnimationFrames(page)).toBe(0);
+      expect((await appDate(page)).isPlaying).toBe(false);
+    }
   });
 
-  test('plays and pauses while preserving the current time', async ({ page }) => {
+  test('pauses and resumes without losing the current instant', async ({ page }) => {
+    await installAnimationClock(page);
     await setAppDate(page, '2024-06-21T12:00:00.000Z');
-    const start = (await appDate(page)).instant;
+    await page.locator('.speed-btn[data-speed="60x"]').click();
     const button = page.locator('#btn-play-pause');
 
     await button.click();
     await expect(button).toHaveClass(/playing/);
     await expect(page.locator('.play-label')).toHaveText('Pause');
-    await page.waitForFunction((initial) => currentDate.toISOString() !== initial, start);
+    await stepAnimationFrame(page, 1000);
+    await stepAnimationFrame(page, 1100);
+    const advanced = await page.evaluate(() => currentDate.getTime());
+
+    await button.click();
+    const paused = await appDate(page);
+    expect(paused.isPlaying).toBe(false);
+    expect(paused.instant).toBe(new Date(advanced).toISOString());
+    expect(await pendingAnimationFrames(page)).toBe(0);
+    await page.waitForTimeout(50);
+    expect((await appDate(page)).instant).toBe(paused.instant);
+
+    await button.click();
+    expect((await appDate(page)).instant).toBe(paused.instant);
+    expect(await pendingAnimationFrames(page)).toBe(1);
+    await stepAnimationFrame(page, 2000);
+    expect((await appDate(page)).instant).toBe(paused.instant);
+    await stepAnimationFrame(page, 2100);
+    expect(await page.evaluate(() => currentDate.getTime())).toBe(advanced + 360000);
+    await expectSunDisplaySynchronized(page);
 
     await button.click();
     await expect(button).not.toHaveClass(/playing/);
     await expect(page.locator('.play-label')).toHaveText('Play');
-    const paused = (await appDate(page)).instant;
-    await page.waitForTimeout(150);
-    expect((await appDate(page)).instant).toBe(paused);
+    expect(await pendingAnimationFrames(page)).toBe(0);
+  });
+
+  test('keeps the displayed sun position synchronized during playback and scrubbing', async ({ page }) => {
+    await installAnimationClock(page);
+    await setAppDate(page, '2024-06-21T12:00:00.000Z');
+    await expectSunDisplaySynchronized(page);
+
+    await page.locator('#btn-play-pause').click();
+    await stepAnimationFrame(page, 1000);
+    await stepAnimationFrame(page, 1100);
+    await expectSunDisplaySynchronized(page);
+
+    await page.locator('#btn-play-pause').click();
+    const timeline = page.locator('#timeline-canvas');
+    const box = await timeline.boundingBox();
+    expect(box).not.toBeNull();
+    await timeline.click({ position: { x: box.width * 0.75, y: box.height / 2 } });
+    await expectAppTime(page, 18 * 60);
+    await expectSunDisplaySynchronized(page);
   });
 
   test('rolls animation playback across midnight into the next day', async ({ page }) => {
-    await setAppDate(page, '2024-06-21T23:59:00.000Z');
-    await page.locator('.speed-btn[data-speed="2min"]').click();
+    await installAnimationClock(page);
+    await setAppDate(page, '2024-06-21T23:59:30.000Z');
+    await page.locator('.speed-btn[data-speed="60x"]').click();
     const button = page.locator('#btn-play-pause');
 
     await button.click();
-    await page.waitForFunction(() => currentDate.getDate() === 22);
+    await stepAnimationFrame(page, 0);
+    await stepAnimationFrame(page, 100);
     const rollover = await appDate(page);
+    expect(rollover.instant).toBe('2024-06-22T00:05:30.000Z');
     expect(rollover.value).toBe('2024-06-22');
-    expect(rollover.hour).toBeLessThan(12);
+    expect(rollover.hour).toBe(0);
+    expect(rollover.minute).toBe(5);
+    expect(rollover.isPlaying).toBe(true);
+    await expect(page.locator('#current-time-display')).toContainText('Jun 22, 2024');
+    await expectSunDisplaySynchronized(page);
 
     await button.click();
     await expect(page.locator('.play-label')).toHaveText('Play');
+    expect(await pendingAnimationFrames(page)).toBe(0);
   });
 });
