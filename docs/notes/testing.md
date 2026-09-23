@@ -9,7 +9,7 @@ The repository has six complementary Playwright suites:
 - `tests/timezone.spec.js` verifies the browser-timezone display contract across DST transitions, UTC date boundaries, the date line, and both hemispheres.
 - `tests/geolocation-fallbacks.spec.js` verifies that GPS and Nominatim failures remain inline and non-blocking.
 - `tests/user-workflows.spec.js` exercises map selection, date controls, keyboard shortcuts, presets, timeline scrubbing, animation controls, and midnight rollover.
-- `tests/visual-overlays.spec.js` provides screenshot baselines for compass orientation and labels, solar bearings and marker states, the sun-path overlay, map repositioning, and the color-coded timeline.
+- `tests/visual-overlays.spec.js` provides screenshot baselines and functional assertions for compass orientation and labels, equinox and polar bearing states, marker visibility, redraw/resize behavior, the sun-path overlay, map repositioning, and the color-coded timeline.
 
 The reference suite is the accuracy contract. Its cases cover Quito at the equinox, New York and London near the June solstice, Sydney near the December solstice, and Tromsø during midnight sun and polar night. Each case includes coordinates, an exact UTC instant, solar altitude and true-north azimuth, sunrise, solar noon, sunset, and day length where applicable.
 

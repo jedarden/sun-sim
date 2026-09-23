@@ -651,7 +651,9 @@
             resizeSunPathCanvas();
             map.on('move zoom resize', () => {
                 resizeSunPathCanvas();
-                drawSunPath();
+            });
+            window.addEventListener('resize', () => {
+                if (sunPathCanvas) resizeSunPathCanvas();
             });
         }
 
@@ -659,10 +661,73 @@
             const container = document.getElementById('map-container');
             sunPathCanvas.width = container.clientWidth;
             sunPathCanvas.height = container.clientHeight;
+            drawSunPath();
+        }
+
+        const SUN_MARKER_HORIZON = -0.1 * Math.PI / 180;
+
+        function isValidSunPosition(position) {
+            return position
+                && Number.isFinite(position.azimuth)
+                && Number.isFinite(position.altitude);
+        }
+
+        function toCompassBearing(position) {
+            if (!isValidSunPosition(position)) return null;
+            return (position.azimuth * 180 / Math.PI + 180 + 360) % 360;
+        }
+
+        function compassPoint(bearing, center, distance) {
+            if (!Number.isFinite(bearing) || !Number.isFinite(distance)) return null;
+            const normalizedBearing = (bearing % 360 + 360) % 360;
+            const mathAngle = (90 - normalizedBearing) * Math.PI / 180;
+            return {
+                x: center.x + distance * Math.cos(mathAngle),
+                y: center.y - distance * Math.sin(mathAngle)
+            };
+        }
+
+        function getSunEventBearing(date, latitude, longitude) {
+            if (!isValidDate(date)) return null;
+            return toCompassBearing(SunCalc.getPosition(date, latitude, longitude));
+        }
+
+        function isSunMarkerVisible(position) {
+            return isValidSunPosition(position) && position.altitude > SUN_MARKER_HORIZON;
+        }
+
+        function getSolarNoonAltitude(sunTimes, date, latitude, longitude) {
+            const referenceDate = isValidDate(sunTimes.solarNoon) ? sunTimes.solarNoon : date;
+            const position = SunCalc.getPosition(referenceDate, latitude, longitude);
+            return isValidSunPosition(position) ? position.altitude : -Math.PI / 2;
+        }
+
+        function getTimelineDaylight(sunTimes, date, latitude, longitude) {
+            const hasSunrise = isValidDate(sunTimes.sunrise);
+            const hasSunset = isValidDate(sunTimes.sunset);
+            const sunrise = hasSunrise ? sunTimes.sunrise.getHours() + sunTimes.sunrise.getMinutes() / 60 : 0;
+            const sunset = hasSunset ? sunTimes.sunset.getHours() + sunTimes.sunset.getMinutes() / 60 : 0;
+
+            if (hasSunrise && hasSunset) {
+                return { sunrise, sunset, polarDay: false, polarNight: false };
+            }
+            if (hasSunrise) {
+                return { sunrise, sunset: 24, polarDay: false, polarNight: false };
+            }
+            if (hasSunset) {
+                return { sunrise: 0, sunset, polarDay: false, polarNight: false };
+            }
+
+            const noonAltitude = getSolarNoonAltitude(sunTimes, date, latitude, longitude);
+            if (noonAltitude > SUN_MARKER_HORIZON) {
+                return { sunrise: 0, sunset: 24, polarDay: true, polarNight: false };
+            }
+            return { sunrise: 0, sunset: 0, polarDay: false, polarNight: true };
         }
 
         // Draw compass rose with sunrise/sunset lines
         function drawSunPath() {
+            if (!sunPathCanvas) return;
             const ctx = sunPathCanvas.getContext('2d');
             ctx.clearRect(0, 0, sunPathCanvas.width, sunPathCanvas.height);
 
@@ -698,110 +763,75 @@
             ctx.textBaseline = 'middle';
 
             directions.forEach(dir => {
-                // Convert from compass bearing to math angle (compass: 0=N, clockwise; math: 0=E, counterclockwise)
-                const mathAngle = (90 - dir.angle) * Math.PI / 180;
-
-                // Draw direction line
-                const lineStart = radius * 0.85;
-                const lineEnd = radius;
-                const x1 = center.x + lineStart * Math.cos(mathAngle);
-                const y1 = center.y - lineStart * Math.sin(mathAngle);
-                const x2 = center.x + lineEnd * Math.cos(mathAngle);
-                const y2 = center.y - lineEnd * Math.sin(mathAngle);
+                const lineStart = compassPoint(dir.angle, center, radius * 0.85);
+                const lineEnd = compassPoint(dir.angle, center, radius);
 
                 ctx.strokeStyle = dir.main ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.5)';
                 ctx.lineWidth = dir.main ? 2 : 1;
                 ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
+                ctx.moveTo(lineStart.x, lineStart.y);
+                ctx.lineTo(lineEnd.x, lineEnd.y);
                 ctx.stroke();
 
-                // Draw direction label
-                const labelDist = radius * 1.15;
-                const labelX = center.x + labelDist * Math.cos(mathAngle);
-                const labelY = center.y - labelDist * Math.sin(mathAngle);
-
+                const labelPoint = compassPoint(dir.angle, center, radius * 1.15);
                 ctx.fillStyle = dir.main ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.6)';
                 ctx.font = dir.main ? 'bold 16px sans-serif' : 'bold 12px sans-serif';
                 ctx.shadowBlur = 4;
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-                ctx.fillText(dir.label, labelX, labelY);
+                ctx.fillText(dir.label, labelPoint.x, labelPoint.y);
                 ctx.shadowBlur = 0;
             });
 
-            // Get sunrise and sunset data
             const times = SunCalc.getTimes(currentDate, currentLat, currentLon);
-            const sunrisePos = isValidDate(times.sunrise) ? SunCalc.getPosition(times.sunrise, currentLat, currentLon) : null;
-            const sunsetPos = isValidDate(times.sunset) ? SunCalc.getPosition(times.sunset, currentLat, currentLon) : null;
+            const sunriseBearing = getSunEventBearing(times.sunrise, currentLat, currentLon);
+            const sunsetBearing = getSunEventBearing(times.sunset, currentLat, currentLon);
 
-            // Draw sunrise line
-            if (sunrisePos) {
-                const azimuth = sunrisePos.azimuth;
-                // SunCalc: 0=South, π/2=West, π=North, 3π/2=East (measured from south going west)
-                // Canvas: 0=East, π/2=North, π=West, 3π/2=South (with y-inverted)
-                const mathAngle = (3 * Math.PI / 2) - azimuth;
-                const x = center.x + radius * Math.cos(mathAngle);
-                const y = center.y - radius * Math.sin(mathAngle);
-
-                ctx.strokeStyle = 'rgba(255, 165, 0, 0.8)'; // Orange for sunrise
+            if (sunriseBearing !== null) {
+                const point = compassPoint(sunriseBearing, center, radius);
+                ctx.strokeStyle = 'rgba(255, 165, 0, 0.8)';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.moveTo(center.x, center.y);
-                ctx.lineTo(x, y);
+                ctx.lineTo(point.x, point.y);
                 ctx.stroke();
             }
 
-            // Draw sunset line
-            if (sunsetPos) {
-                const azimuth = sunsetPos.azimuth;
-                const mathAngle = (3 * Math.PI / 2) - azimuth;
-                const x = center.x + radius * Math.cos(mathAngle);
-                const y = center.y - radius * Math.sin(mathAngle);
-
-                ctx.strokeStyle = 'rgba(255, 69, 0, 0.8)'; // Red-orange for sunset
+            if (sunsetBearing !== null) {
+                const point = compassPoint(sunsetBearing, center, radius);
+                ctx.strokeStyle = 'rgba(255, 69, 0, 0.8)';
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.moveTo(center.x, center.y);
-                ctx.lineTo(x, y);
+                ctx.lineTo(point.x, point.y);
                 ctx.stroke();
             }
 
-            // Draw current sun position
             const sunPos = SunCalc.getPosition(currentDate, currentLat, currentLon);
-            if (sunPos.altitude > -0.1) {
-                const azimuth = sunPos.azimuth;
-                const mathAngle = (3 * Math.PI / 2) - azimuth;
-
-                // Sun position line
-                const sunDist = radius * 0.95;
-                const x = center.x + sunDist * Math.cos(mathAngle);
-                const y = center.y - sunDist * Math.sin(mathAngle);
-
+            if (isSunMarkerVisible(sunPos)) {
+                const sunPoint = compassPoint(toCompassBearing(sunPos), center, radius * 0.95);
                 ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
                 ctx.beginPath();
                 ctx.moveTo(center.x, center.y);
-                ctx.lineTo(x, y);
+                ctx.lineTo(sunPoint.x, sunPoint.y);
                 ctx.stroke();
                 ctx.setLineDash([]);
 
-                // Sun marker
                 ctx.beginPath();
-                ctx.arc(x, y, 14, 0, Math.PI * 2);
+                ctx.arc(sunPoint.x, sunPoint.y, 14, 0, Math.PI * 2);
                 ctx.fillStyle = '#FFD700';
                 ctx.shadowBlur = 20;
                 ctx.shadowColor = '#FFD700';
                 ctx.fill();
                 ctx.shadowBlur = 0;
 
-                // Sun glow
-                const gradient = ctx.createRadialGradient(x, y, 0, x, y, 30);
+                const gradient = ctx.createRadialGradient(sunPoint.x, sunPoint.y, 0, sunPoint.x, sunPoint.y, 30);
                 gradient.addColorStop(0, 'rgba(255, 215, 0, 0.5)');
                 gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
-                ctx.arc(x, y, 30, 0, Math.PI * 2);
+                ctx.arc(sunPoint.x, sunPoint.y, 30, 0, Math.PI * 2);
                 ctx.fill();
             }
 
@@ -861,7 +891,7 @@
 
             // Add current sun position
             const sunPos = SunCalc.getPosition(currentDate, currentLat, currentLon);
-            if (sunPos.altitude > -0.1) {
+            if (isSunMarkerVisible(sunPos)) {
                 legendItems.push({
                     color: 'rgba(255, 215, 0, 0.6)',
                     label: 'Current Sun',
@@ -972,28 +1002,29 @@
 
             ctx.clearRect(0, 0, width, height);
 
-            // Get sunrise/sunset times
             const times = SunCalc.getTimes(currentDate, currentLat, currentLon);
-            const sunrise = isValidDate(times.sunrise) ? times.sunrise.getHours() + times.sunrise.getMinutes()/60 : 6;
-            const sunset = isValidDate(times.sunset) ? times.sunset.getHours() + times.sunset.getMinutes()/60 : 18;
+            const daylight = getTimelineDaylight(times, currentDate, currentLat, currentLon);
 
-            // Draw color-coded timeline
             for (let i = 0; i < width; i++) {
                 const hour = (i / width) * 24;
                 let color;
 
-                if (hour < sunrise - 1) {
-                    color = '#1a1a3e'; // Night
-                } else if (hour < sunrise) {
-                    const t = (hour - (sunrise - 1));
-                    color = interpolateColor('#1a1a3e', '#ff6b6b', t); // Dawn
-                } else if (hour < sunset) {
-                    color = '#87CEEB'; // Day
-                } else if (hour < sunset + 1) {
-                    const t = (hour - sunset);
-                    color = interpolateColor('#ff6b6b', '#1a1a3e', t); // Dusk
+                if (daylight.polarDay) {
+                    color = '#87CEEB';
+                } else if (daylight.polarNight) {
+                    color = '#1a1a3e';
+                } else if (hour < daylight.sunrise - 1) {
+                    color = '#1a1a3e';
+                } else if (hour < daylight.sunrise) {
+                    const t = (hour - (daylight.sunrise - 1));
+                    color = interpolateColor('#1a1a3e', '#ff6b6b', t);
+                } else if (hour < daylight.sunset) {
+                    color = '#87CEEB';
+                } else if (hour < daylight.sunset + 1) {
+                    const t = (hour - daylight.sunset);
+                    color = interpolateColor('#ff6b6b', '#1a1a3e', t);
                 } else {
-                    color = '#1a1a3e'; // Night
+                    color = '#1a1a3e';
                 }
 
                 ctx.fillStyle = color;
@@ -1463,14 +1494,14 @@
         function updateSunInfo() {
             const sunPos = SunCalc.getPosition(currentDate, currentLat, currentLon);
             const sunTimes = SunCalc.getTimes(currentDate, currentLat, currentLon);
+            const azimuth = toCompassBearing(sunPos);
+            const altitude = isValidSunPosition(sunPos) ? sunPos.altitude * 180 / Math.PI : null;
 
-            const azimuth = (sunPos.azimuth * 180 / Math.PI + 180) % 360;
-            const altitude = sunPos.altitude * 180 / Math.PI;
-
-            document.getElementById('info-azimuth').textContent = azimuth.toFixed(1) + '°';
+            document.getElementById('info-azimuth').textContent =
+                azimuth === null ? '--°' : azimuth.toFixed(1) + '°';
             const altEl = document.getElementById('info-altitude');
-            altEl.textContent = altitude.toFixed(1) + '°';
-            altEl.className = 'info-value ' + (altitude > 0 ? 'sun-up' : 'sun-down');
+            altEl.textContent = altitude === null ? '--°' : altitude.toFixed(1) + '°';
+            altEl.className = 'info-value ' + (altitude !== null && altitude > 0 ? 'sun-up' : 'sun-down');
 
             const hasSunrise = isValidDate(sunTimes.sunrise);
             const hasSolarNoon = isValidDate(sunTimes.solarNoon);
@@ -1489,8 +1520,9 @@
                 const minutes = Math.floor(dayLength % 60);
                 document.getElementById('info-daylength').textContent = `${hours}h ${minutes}m`;
             } else {
+                const noonAltitude = getSolarNoonAltitude(sunTimes, currentDate, currentLat, currentLon);
                 document.getElementById('info-daylength').textContent =
-                    altitude > 0 ? '24h (Midnight Sun)' : '0h (Polar Night)';
+                    noonAltitude > SUN_MARKER_HORIZON ? '24h (Midnight Sun)' : '0h (Polar Night)';
             }
         }
 

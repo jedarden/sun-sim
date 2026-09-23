@@ -89,7 +89,13 @@ The Sun Simulator now features a **compass rose overlay** that displays cardinal
 ### Behavior
 - Updates in real-time as time changes
 - Shows current azimuth (bearing) of sun
-- Only visible when sun is above horizon (altitude > -0.1°)
+- Only visible when sun is above the `-0.1°` horizon threshold
+
+### Missing sunrise or sunset
+- A sunrise or sunset ray is drawn only when SunCalc returns a valid event for the selected date and location
+- During polar day, neither ray is drawn, the current-sun marker remains visible whenever the sun is above the horizon threshold, and the timeline is entirely day
+- During polar night, neither ray is drawn, the current-sun marker is hidden, and the timeline is entirely night
+- The information panel continues to show `No sunrise` and `No sunset`; no placeholder time or bearing is invented
 
 ---
 

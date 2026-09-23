@@ -60,6 +60,49 @@ async function canvasScreenshot(page, selector) {
   return page.locator(selector).screenshot({ animations: 'disabled', scale: 'css' });
 }
 
+async function readOverlayState(page) {
+  return page.evaluate(() => {
+    const center = {
+      x: sunPathCanvas.width / 2,
+      y: sunPathCanvas.height / 2
+    };
+    const times = SunCalc.getTimes(currentDate, currentLat, currentLon);
+    const position = SunCalc.getPosition(currentDate, currentLat, currentLon);
+    const context = sunPathCanvas.getContext('2d');
+    const pixels = context.getImageData(0, 0, sunPathCanvas.width, sunPathCanvas.height).data;
+    const pixelCounts = { sunrise: 0, sunset: 0, marker: 0 };
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index + 3] === 0) continue;
+      const x = (index / 4) % sunPathCanvas.width;
+      const y = Math.floor((index / 4) / sunPathCanvas.width);
+      const distance = Math.hypot(x - center.x, y - center.y);
+      if (distance < 30 || distance > 160) continue;
+      const red = pixels[index];
+      const green = pixels[index + 1];
+      const blue = pixels[index + 2];
+      if (red > 180 && green > 70 && green < 190 && blue < 80) pixelCounts.sunrise += 1;
+      if (red > 140 && green >= 25 && green < 110 && blue < 80) pixelCounts.sunset += 1;
+      if (red > 220 && green > 170 && blue < 120) pixelCounts.marker += 1;
+    }
+    return {
+      center,
+      pixelCounts,
+      north: compassPoint(0, center, 150),
+      east: compassPoint(90, center, 150),
+      south: compassPoint(180, center, 150),
+      west: compassPoint(270, center, 150),
+      sunriseBearing: getSunEventBearing(times.sunrise, currentLat, currentLon),
+      sunsetBearing: getSunEventBearing(times.sunset, currentLat, currentLon),
+      sunrisePoint: compassPoint(getSunEventBearing(times.sunrise, currentLat, currentLon), center, 150),
+      sunsetPoint: compassPoint(getSunEventBearing(times.sunset, currentLat, currentLon), center, 150),
+      currentBearing: toCompassBearing(position),
+      markerVisible: isSunMarkerVisible(position),
+      timeline: getTimelineDaylight(times, currentDate, currentLat, currentLon),
+      canvas: { width: sunPathCanvas.width, height: sunPathCanvas.height }
+    };
+  });
+}
+
 test.use({ timezoneId: 'UTC', viewport: { width: 1280, height: 720 } });
 
 test.describe('Solar overlay visual regression', () => {
@@ -80,6 +123,74 @@ test.describe('Solar overlay visual regression', () => {
   test('shows sunrise and sunset bearings in their seasonal positions', async ({ page }) => {
     await setScene(page, springEquinoxNoon);
     await expectOverlayScreenshot(page, 'sunrise-sunset-bearings.png');
+  });
+
+  test('keeps the compass north-up and maps equinox events east and west', async ({ page }) => {
+    await setScene(page, springEquinoxNoon, 0, -78.5);
+    const state = await readOverlayState(page);
+
+    expect(state.north.x).toBeCloseTo(state.center.x, 5);
+    expect(state.north.y).toBeCloseTo(state.center.y - 150, 5);
+    expect(state.east.x).toBeCloseTo(state.center.x + 150, 5);
+    expect(state.east.y).toBeCloseTo(state.center.y, 5);
+    expect(state.south.x).toBeCloseTo(state.center.x, 5);
+    expect(state.south.y).toBeCloseTo(state.center.y + 150, 5);
+    expect(state.west.x).toBeCloseTo(state.center.x - 150, 5);
+    expect(state.west.y).toBeCloseTo(state.center.y, 5);
+
+    expect(state.sunriseBearing).toBeGreaterThan(80);
+    expect(state.sunriseBearing).toBeLessThan(100);
+    expect(state.sunsetBearing).toBeGreaterThan(260);
+    expect(state.sunsetBearing).toBeLessThan(280);
+    expect(state.pixelCounts.sunrise).toBeGreaterThan(0);
+    expect(state.pixelCounts.sunset).toBeGreaterThan(0);
+    expect(state.sunrisePoint.x).toBeGreaterThan(state.center.x + 140);
+    expect(Math.abs(state.sunrisePoint.y - state.center.y)).toBeLessThan(1);
+    expect(state.sunsetPoint.x).toBeLessThan(state.center.x - 140);
+    expect(Math.abs(state.sunsetPoint.y - state.center.y)).toBeLessThan(1);
+    expect(state.markerVisible).toBe(true);
+  });
+
+  test('omits polar-day event rays while keeping the sun marker visible', async ({ page }) => {
+    await setScene(page, '2024-06-21T00:00:00.000Z', 69.6492, 18.9553);
+    const state = await readOverlayState(page);
+
+    expect(state.sunriseBearing).toBeNull();
+    expect(state.sunsetBearing).toBeNull();
+    expect(state.pixelCounts.sunrise).toBe(0);
+    expect(state.pixelCounts.sunset).toBe(0);
+    expect(state.pixelCounts.marker).toBeGreaterThan(0);
+    expect(state.markerVisible).toBe(true);
+    expect(state.timeline.polarDay).toBe(true);
+    expect(state.timeline.polarNight).toBe(false);
+    await expect(page.locator('#info-sunrise')).toHaveText('No sunrise');
+    await expect(page.locator('#info-sunset')).toHaveText('No sunset');
+  });
+
+  test('omits polar-night event rays and the sun marker', async ({ page }) => {
+    await setScene(page, '2024-12-21T12:00:00.000Z', 69.6492, 18.9553);
+    const state = await readOverlayState(page);
+
+    expect(state.sunriseBearing).toBeNull();
+    expect(state.sunsetBearing).toBeNull();
+    expect(state.pixelCounts.sunrise).toBe(0);
+    expect(state.pixelCounts.sunset).toBe(0);
+    expect(state.pixelCounts.marker).toBe(0);
+    expect(state.markerVisible).toBe(false);
+    expect(state.timeline.polarDay).toBe(false);
+    expect(state.timeline.polarNight).toBe(true);
+    await expect(page.locator('#info-sunrise')).toHaveText('No sunrise');
+    await expect(page.locator('#info-sunset')).toHaveText('No sunset');
+  });
+
+  test('uses the documented horizon threshold for marker visibility', async ({ page }) => {
+    const visibility = await page.evaluate(() => ({
+      below: isSunMarkerVisible({ azimuth: 0, altitude: -0.11 * Math.PI / 180 }),
+      atThreshold: isSunMarkerVisible({ azimuth: 0, altitude: -0.1 * Math.PI / 180 }),
+      above: isSunMarkerVisible({ azimuth: 0, altitude: -0.09 * Math.PI / 180 })
+    }));
+
+    expect(visibility).toEqual({ below: false, atThreshold: false, above: true });
   });
 
   test('shows the glowing current-sun marker and bearing', async ({ page }) => {
@@ -104,6 +215,7 @@ test.describe('Solar overlay visual regression', () => {
   test('redraws the overlay when the map is repositioned', async ({ page }) => {
     await setScene(page, summerSolsticeNoon);
     const before = await canvasScreenshot(page, overlayCanvas);
+    const dimensionsBefore = await readOverlayState(page);
 
     await page.evaluate(() => map.setView([0, 0], 12, { animate: false }));
     await expect.poll(() => page.evaluate(() => [
@@ -114,6 +226,9 @@ test.describe('Solar overlay visual regression', () => {
     const after = await canvasScreenshot(page, overlayCanvas);
     expect(Buffer.compare(before, after)).not.toBe(0);
     await expectOverlayScreenshot(page, 'map-repositioned.png');
+
+    await page.setViewportSize({ width: 1100, height: 700 });
+    await expect.poll(async () => (await readOverlayState(page)).canvas).not.toEqual(dimensionsBefore.canvas);
   });
 
   test('renders the color-coded day, twilight, and night timeline', async ({ page }) => {
