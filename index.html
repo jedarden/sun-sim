@@ -453,6 +453,40 @@
                 width: 100%;
                 max-height: 45vh;
             }
+            .date-navigation {
+                flex-wrap: wrap;
+            }
+            .gps-btn,
+            #date-picker,
+            .nav-btn,
+            .shortcut-btn,
+            .play-btn,
+            .speed-btn {
+                min-height: 44px;
+            }
+            .nav-btn {
+                min-width: 44px;
+            }
+            .github-link {
+                min-width: 44px;
+                min-height: 44px;
+                justify-content: center;
+            }
+            .shortcut-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #map .leaflet-bar a {
+                width: 44px;
+                height: 44px;
+                line-height: 44px;
+            }
+            .flatpickr-calendar .flatpickr-prev-month,
+            .flatpickr-calendar .flatpickr-next-month {
+                min-width: 44px;
+                min-height: 44px;
+            }
         }
     </style>
 </head>
@@ -705,24 +739,52 @@
         function getTimelineDaylight(sunTimes, date, latitude, longitude) {
             const hasSunrise = isValidDate(sunTimes.sunrise);
             const hasSunset = isValidDate(sunTimes.sunset);
-            const sunrise = hasSunrise ? sunTimes.sunrise.getHours() + sunTimes.sunrise.getMinutes() / 60 : 0;
-            const sunset = hasSunset ? sunTimes.sunset.getHours() + sunTimes.sunset.getMinutes() / 60 : 0;
+            const getTimelineHour = event => {
+                const dayDelta = (
+                    Date.UTC(event.getFullYear(), event.getMonth(), event.getDate())
+                    - Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+                ) / 86400000;
+                return event.getHours() + event.getMinutes() / 60 + dayDelta * 24;
+            };
+            const normalizeHour = hour => ((hour % 24) + 24) % 24;
+            const rawSunrise = hasSunrise ? getTimelineHour(sunTimes.sunrise) : 0;
+            const rawSunset = hasSunset ? getTimelineHour(sunTimes.sunset) : 0;
 
             if (hasSunrise && hasSunset) {
-                return { sunrise, sunset, polarDay: false, polarNight: false };
+                const sunrise = normalizeHour(rawSunrise);
+                const sunset = normalizeHour(rawSunset);
+                return {
+                    sunrise,
+                    sunset,
+                    wrapsMidnight: sunset < sunrise,
+                    polarDay: false,
+                    polarNight: false
+                };
             }
             if (hasSunrise) {
-                return { sunrise, sunset: 24, polarDay: false, polarNight: false };
+                return {
+                    sunrise: normalizeHour(rawSunrise),
+                    sunset: 24,
+                    wrapsMidnight: false,
+                    polarDay: false,
+                    polarNight: false
+                };
             }
             if (hasSunset) {
-                return { sunrise: 0, sunset, polarDay: false, polarNight: false };
+                return {
+                    sunrise: 0,
+                    sunset: normalizeHour(rawSunset),
+                    wrapsMidnight: false,
+                    polarDay: false,
+                    polarNight: false
+                };
             }
 
             const noonAltitude = getSolarNoonAltitude(sunTimes, date, latitude, longitude);
             if (noonAltitude > SUN_MARKER_HORIZON) {
-                return { sunrise: 0, sunset: 24, polarDay: true, polarNight: false };
+                return { sunrise: 0, sunset: 24, wrapsMidnight: false, polarDay: true, polarNight: false };
             }
-            return { sunrise: 0, sunset: 0, polarDay: false, polarNight: true };
+            return { sunrise: 0, sunset: 0, wrapsMidnight: false, polarDay: false, polarNight: true };
         }
 
         // Draw compass rose with sunrise/sunset lines
@@ -954,7 +1016,7 @@
         // Initialize timeline
         function initTimeline() {
             timelineCanvas = document.getElementById('timeline-canvas');
-            const ctx = timelineCanvas.getContext('2d');
+            resizeTimelineCanvas();
 
             // Touch/mouse events for scrubbing
             let isDragging = false;
@@ -981,8 +1043,19 @@
 
             document.addEventListener('mouseup', () => isDragging = false);
             document.addEventListener('touchend', () => isDragging = false);
+            window.addEventListener('resize', () => {
+                if (!timelineCanvas) return;
+                resizeTimelineCanvas();
+                drawTimeline();
+            });
 
             drawTimeline();
+        }
+
+        function resizeTimelineCanvas() {
+            const rect = timelineCanvas.getBoundingClientRect();
+            timelineCanvas.width = Math.max(1, Math.round(rect.width));
+            timelineCanvas.height = Math.max(1, Math.round(rect.height));
         }
 
         function updateTimeFromCanvas(e) {
@@ -1007,21 +1080,24 @@
 
             for (let i = 0; i < width; i++) {
                 const hour = (i / width) * 24;
+                const inDawn = hour >= daylight.sunrise - 1 && hour < daylight.sunrise;
+                const inDaylight = daylight.wrapsMidnight
+                    ? hour >= daylight.sunrise || hour < daylight.sunset
+                    : hour >= daylight.sunrise && hour < daylight.sunset;
+                const inDusk = hour >= daylight.sunset && hour < daylight.sunset + 1;
                 let color;
 
                 if (daylight.polarDay) {
                     color = '#87CEEB';
                 } else if (daylight.polarNight) {
                     color = '#1a1a3e';
-                } else if (hour < daylight.sunrise - 1) {
-                    color = '#1a1a3e';
-                } else if (hour < daylight.sunrise) {
-                    const t = (hour - (daylight.sunrise - 1));
+                } else if (inDawn) {
+                    const t = hour - (daylight.sunrise - 1);
                     color = interpolateColor('#1a1a3e', '#ff6b6b', t);
-                } else if (hour < daylight.sunset) {
+                } else if (inDaylight) {
                     color = '#87CEEB';
-                } else if (hour < daylight.sunset + 1) {
-                    const t = (hour - daylight.sunset);
+                } else if (inDusk) {
+                    const t = hour - daylight.sunset;
                     color = interpolateColor('#ff6b6b', '#1a1a3e', t);
                 } else {
                     color = '#1a1a3e';

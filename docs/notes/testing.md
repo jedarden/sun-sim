@@ -2,7 +2,7 @@
 
 ## Overview
 
-The repository has seven complementary Playwright suites:
+The repository has eight complementary Playwright suites:
 
 - `tests/solar-reference.spec.js` checks the vendored SunCalc results against fixed U.S. Naval Observatory (USNO) reference fixtures.
 - `tests/solar-calculations.spec.js` provides broader smoke coverage for equinox, seasonal, and polar UI states.
@@ -11,6 +11,7 @@ The repository has seven complementary Playwright suites:
 - `tests/user-workflows.spec.js` exercises map selection, date controls, keyboard shortcuts, presets, timeline scrubbing, animation controls, and midnight rollover.
 - `tests/visual-overlays.spec.js` provides screenshot baselines and functional assertions for compass orientation and labels, equinox and polar bearing states, marker visibility, redraw/resize behavior, the sun-path overlay, map repositioning, and the color-coded timeline.
 - `tests/performance.spec.js` measures native animation-frame cadence for map overlays, sun-path rendering, timeline dragging, and animation at desktop and mobile viewports.
+- `tests/mobile.spec.js` verifies the stacked mobile layout, 44px controls, touch map pan and zoom, touch-driven controls and timeline scrubbing, and canvas rendering across narrow mobile viewport sizes.
 
 The reference suite is the accuracy contract. Its cases cover Quito at the equinox, New York and London near the June solstice, Sydney near the December solstice, and Tromsø during midnight sun and polar night. Each case includes coordinates, an exact UTC instant, solar altitude and true-north azimuth, sunrise, solar noon, sunset, and day length where applicable.
 
@@ -80,6 +81,18 @@ Run it directly with:
 ```bash
 npx playwright test tests/user-workflows.spec.js
 ```
+
+## Mobile responsive and touch coverage
+
+The mobile suite runs with touch-enabled mobile emulation and checks 320×568, 360×640, and 390×844 layouts. It verifies the stacked map and internally scrolling control panel, 44px minimum primary-control targets, touch date and playback controls, a mocked GPS request, one-finger map panning, pinch zoom, touch zoom buttons, timeline tap and drag synchronization, cross-midnight daylight rendering in a non-UTC browser timezone, and resolution-matched functional canvas pixels after viewport resizing.
+
+Run it directly with:
+
+```bash
+npx playwright test tests/mobile.spec.js
+```
+
+Automated touch coverage is Chromium-only. The Playwright configuration runs one Chromium project, and the one-finger and two-finger gesture helpers use Chromium's `Input.dispatchTouchEvent` DevTools Protocol. That protocol is not portable to Firefox or WebKit, Playwright's `isMobile` option is not supported in Firefox, and the high-level Playwright touchscreen API only provides single-point taps. Emulation also does not exercise real iOS or Android hardware, browser chrome or dynamic viewport behavior, safe-area insets, actual device pixel ratios, or browser-specific touch-action policies. Geolocation, reverse geocoding, and map tiles are mocked, so the suite does not validate permissions or external services on a device. Flatpickr's generated day cells remain 39×39 so all seven columns fit the 320px profile; the suite verifies that the picker opens by touch but excludes those popup cells from the 44px primary-control assertion. Functional pixel assertions are used instead of a mobile screenshot baseline, which keeps rendering coverage independent of Linux-specific baseline names while leaving real-device visual differences to manual validation.
 
 ## Visual overlay coverage
 
