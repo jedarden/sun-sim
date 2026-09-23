@@ -2,21 +2,34 @@
 
 **Version:** 1.0.0
 **Date:** 2025-11-14
-**Status:** Draft
+**Last service contract reconciliation:** 2026-09-23
+**Status:** Draft (mixed as-built contract and future design)
 **Author:** System Architecture Designer
 
 ## Executive Summary
 
-This document outlines the complete system architecture for a web-based sun simulator application that visualizes sun position, shadows, and solar angles on an interactive map. The application calculates astronomical positions in real-time and renders them as visual overlays on map tiles.
+This document describes the shipped sun simulator and retains clearly labeled
+future design material. The current application is a static, single-page client:
+Leaflet renders Esri World Imagery tiles, SunCalc performs all solar calculations
+in the browser, and Nominatim optionally supplies reverse-geocoded place names.
+There is no application backend, runtime provider switch, service worker, or
+persistent map/geocoding cache.
+
+> **As-built boundary:** This is a mixed as-built and future-design draft. The
+> shipped service contract is authoritative in sections 1.3, 2.1's Map Engine,
+> 2.3, 4.4, 4.5, 6.1, 9.2, 11.3, 11.4, ADR-002, and ADR-004. Other module
+> trees, Web Components, storage services, date-fns, build tooling, workers,
+> monitoring, deployment steps, and pseudocode are proposals rather than current
+> runtime facts unless a passage explicitly says otherwise.
 
 ## 1. System Overview
 
 ### 1.1 Purpose
-The sun simulator provides real-time visualization of:
-- Sun position (azimuth, elevation, zenith)
-- Shadow casting and direction
-- Solar angles throughout the day
-- Daylight/twilight/night zones
+The shipped sun simulator provides real-time visualization of:
+- Sun azimuth and altitude
+- Sunrise, sunset, solar noon, and day length
+- A daily sun path
+- Date, time, and animation controls
 - Location-specific solar data
 
 ### 1.2 Key Requirements
@@ -24,14 +37,67 @@ The sun simulator provides real-time visualization of:
 - **Performance**: Render updates at 60fps
 - **Global Coverage**: Support any location worldwide
 - **Responsiveness**: Mobile-first responsive design
-- **Offline Capability**: Core calculations work offline
+- **Partial offline capability**: Solar calculations and controls continue after a successful app load; imagery, place-name lookup, and cold reloads are not guaranteed offline
 - **Real-time**: Live updates with date/time changes
+
+### 1.3 Shipped Service and Offline Contract
+
+The browser makes direct requests to two public services. The shipped code does
+not proxy, retry through another provider, or switch either endpoint at runtime.
+
+```text
+Tiles:       https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}
+Current UI credit: Tiles © Esri
+Maximum zoom: 18
+
+Geocoding:   https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=10&addressdetails=1
+Attribution: Nominatim and © OpenStreetMap contributors
+Request identity: attempts User-Agent: SunSimulator/1.0
+```
+
+`Tiles © Esri` is the shipped UI credit, not a claim that it is the complete
+required attribution. Current [World Imagery service
+metadata](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer?f=pjson)
+identifies the source as Esri, Vantor, Earthstar Geographics, and the GIS User
+Community. Deployments must review the current [Esri terms and data
+attributions](https://www.esri.com/en-us/legal/terms) and display every credit
+required for their use.
+
+Esri imagery is the only basemap layer. If its tiles fail, Leaflet keeps its
+controls and map state, while unavailable images produce a blank basemap;
+coordinates, overlays, and solar calculations continue. There is no OSM or
+Mapbox tile fallback.
+
+Nominatim is optional and is not the tile provider. Requests are debounced by
+500 ms, successful results are cached in memory using coordinates rounded to two
+decimal places, and failures are not cached, so a later update can retry them. If
+`AbortController` exists, a
+request is aborted after eight seconds. A timeout, HTTP 204/404, HTTP 429,
+other HTTP failure, missing supported address field, CORS/network error, or JSON
+parse error leaves the coordinates and calculations intact and displays
+**Custom Location** with a status message.
+
+The [public Nominatim policy](https://operations.osmfoundation.org/policies/nominatim/)
+sets an absolute maximum of one request per second per application and requires
+an identifying `Referer` or `User-Agent`, visible attribution, and caching. The
+500 ms debounce is not an aggregate rate limiter, and browser Fetch support for
+setting `User-Agent` varies. The production operator is responsible for policy
+compliance and for selecting a suitable service or proxy if public-instance
+access is unsuitable. OpenStreetMap attribution remains visible even on
+fallback; the current Esri UI credit remains attached to the tile layer.
+
+After a successful application load, the local Leaflet, SunCalc, and Flatpickr
+assets and the date, timeline, animation, overlay, and calculation paths need no
+application-server calls. Fresh imagery and place names need external network
+access. Browser geolocation depends on the platform's positioning source. There
+is no service worker, manifest, IndexedDB cache, persisted geocode cache, or
+guaranteed offline reload path.
 
 ## 2. Technology Stack
 
 ### 2.1 Core Technologies
 
-#### Frontend Framework
+#### Proposed Frontend Framework
 - **Vanilla JavaScript (ES6+)** - No framework overhead, maximum performance
 - **Web Components** - Reusable, encapsulated UI components
 - **CSS3 with Custom Properties** - Theming and responsive design
@@ -44,17 +110,17 @@ The sun simulator provides real-time visualization of:
 - Canvas provides 60fps rendering for overlays
 
 #### Map Engine
-- **Leaflet.js** - Lightweight, extensible, well-documented
-- **OpenStreetMap tiles** - Free, global coverage
-- Alternative: **Mapbox GL JS** (if 3D features needed)
+- **Leaflet.js** - Vendored locally for map interaction
+- **Esri World Imagery** - Direct satellite and aerial tile requests
+- **No alternate tile provider** - Tile failures leave the Leaflet layer blank
 
 **Rationale:**
-- Leaflet: 42KB vs Mapbox GL: 500KB
-- Simpler API for 2D overlays
-- Extensive plugin ecosystem
-- Better mobile performance
+- Leaflet provides the required 2D pan, zoom, and overlay behavior
+- The Esri endpoint needs no API key in the shipped client
+- The imagery and OpenStreetMap geocoding contracts remain separate services
+- Mapbox GL remains a possible future replacement, not a shipped fallback
 
-#### Astronomical Calculations
+#### Astronomical Calculations (Current SunCalc Plus Proposed Extensions)
 - **SunCalc.js** - Proven library for sun position calculations
 - **Custom extensions** - Shadow calculations, twilight zones
 - **date-fns** - Date/time manipulation (11KB, tree-shakeable)
@@ -65,7 +131,7 @@ The sun simulator provides real-time visualization of:
 - Accurate to ±0.3° in the checked reference cases for sun position
 - Will extend with shadow ray-casting algorithms
 
-### 2.2 Development Tools
+### 2.2 Development Tools (Proposed, Not Shipped)
 
 ```json
 {
@@ -95,22 +161,24 @@ The sun simulator provides real-time visualization of:
 
 ```yaml
 Geocoding:
-  primary: "Nominatim (OpenStreetMap)" # Free, no API key
-  fallback: "Mapbox Geocoding" # Better accuracy, requires key
+  provider: "Nominatim (OpenStreetMap)"
+  operation: "reverse only"
+  endpoint: "https://nominatim.openstreetmap.org/reverse"
+  request_identity: "attempts User-Agent: SunSimulator/1.0"
+  policy_limit: "maximum 1 request/second per application"
+  fallback: "Custom Location"
 
 Tiles:
-  primary: "OpenStreetMap"
-  alternative: "Mapbox"
-  cdn: "CloudFlare" # CDN for tile caching
-
-Time Zones:
-  library: "date-fns-tz"
-  fallback: "Intl API"
+  provider: "Esri World Imagery"
+  endpoint: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+  current_ui_credit: "Tiles © Esri"
+  service_metadata_credit: "Esri, Vantor, Earthstar Geographics, and the GIS User Community"
+  fallback: "none; blank basemap"
 ```
 
 ## 3. System Architecture
 
-### 3.1 High-Level Architecture
+### 3.1 High-Level Logical Architecture (Modules Are Proposed)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -147,17 +215,18 @@ Time Zones:
 └────────────────────────┬────────────────────────────────────┘
                          │
 ┌────────────────────────▼────────────────────────────────────┐
-│                   Data/Cache Layer                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │  IndexedDB   │  │ LocalStorage │  │  SessionCache│      │
-│  │  (Locations) │  │ (Preferences)│  │  (Tiles)     │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│                 Runtime State Layer                         │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │ Browser memory: coordinates, date/time, map view,     │   │
+│  │ solar state, and successful rounded-coordinate names  │   │
+│  └──────────────────────────────────────────────────────┘   │
+│  No IndexedDB, persisted tiles, or service worker          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Component Architecture
+### 3.2 Component Architecture (Proposed, Not Shipped)
 
-#### 3.2.1 Core Module Structure
+#### 3.2.1 Core Module Structure (Proposed)
 
 ```
 src/
@@ -217,7 +286,7 @@ src/
 └── main.js                        # Application entry point
 ```
 
-### 3.3 Data Flow Architecture
+### 3.3 Proposed Data Flow Architecture
 
 ```
 User Interaction
@@ -254,9 +323,9 @@ User Interaction
 4. **Reactive Updates**: Components subscribe to state changes
 5. **Optimized Rendering**: Only changed components re-render
 
-## 4. Detailed Component Design
+## 4. Detailed Component Design (Proposed Except Shipped Service Snippets)
 
-### 4.1 Astronomical Calculation Engine
+### 4.1 Astronomical Calculation Design (Proposed)
 
 #### SunCalculator.js
 ```javascript
@@ -347,7 +416,7 @@ class TwilightZones {
 }
 ```
 
-### 4.2 State Management
+### 4.2 State Management Design (Proposed)
 
 #### StateManager.js - Event-Driven State
 ```javascript
@@ -458,7 +527,7 @@ class StateManager {
 }
 ```
 
-### 4.3 Rendering System
+### 4.3 Rendering Design (Proposed; Current Rendering Differs)
 
 #### RenderService.js - Canvas Overlay Rendering
 ```javascript
@@ -528,107 +597,58 @@ class RenderService {
 
 ### 4.4 Map Service Integration
 
-#### MapService.js - Leaflet Integration
+#### Leaflet Map Initialization
 ```javascript
-/**
- * Map management and tile loading
- * Integrates with Leaflet for map rendering
- */
-class MapService {
-  constructor(containerId, options) {
-    this.map = L.map(containerId, {
-      center: options.center || [0, 0],
-      zoom: options.zoom || 2,
-      minZoom: 2,
-      maxZoom: 18,
-      zoomControl: false  // Custom controls
-    });
+map = L.map('map', {
+  zoomControl: true,
+  attributionControl: true
+}).setView([currentLat, currentLon], 12);
 
-    this.tileLayer = L.tileLayer(
-      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 18
-      }
-    ).addTo(this.map);
+L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {
+    attribution: 'Tiles © Esri',
+    maxZoom: 18
   }
+).addTo(map);
 
-  /**
-   * Add custom overlay layer
-   */
-  addOverlayLayer(canvas) {
-    L.canvasLayer(canvas).addTo(this.map);
-  }
-
-  /**
-   * Convert lat/lng to pixel coordinates
-   */
-  latLngToPoint(lat, lng) {
-    return this.map.latLngToContainerPoint([lat, lng]);
-  }
-
-  /**
-   * Handle map events
-   */
-  on(event, handler) {
-    this.map.on(event, handler);
-  }
-}
+map.on('moveend zoomend', function() {
+  const center = map.getCenter();
+  currentLat = center.lat;
+  currentLon = center.lng;
+  updateAll();
+});
 ```
+
+The application has no tile error handler, alternate layer, application-managed
+tile cache, or provider switch. Incidental provider or browser caching is not a
+service guarantee. A failed image request does not stop map state or solar
+updates.
 
 ### 4.5 Geocoding Service
 
-#### GeocodingService.js - Location Search
+#### Nominatim Reverse Geocoding
 ```javascript
-/**
- * Location search and reverse geocoding
- * Uses Nominatim (OpenStreetMap) API
- */
-class GeocodingService {
-  /**
-   * Search for location by name
-   * @param {string} query - Search query
-   * @returns {Promise<Location[]>} Search results
-   */
-  async search(query) {
-    const url = `https://nominatim.openstreetmap.org/search?` +
-      `q=${encodeURIComponent(query)}&format=json&limit=5`;
+const url =
+  `https://nominatim.openstreetmap.org/reverse?` +
+  `format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`;
 
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'SunSimulator/1.0' }
-    });
-
-    return this.parseResults(await response.json());
-  }
-
-  /**
-   * Reverse geocode coordinates
-   * @param {number} lat - Latitude
-   * @param {number} lng - Longitude
-   * @returns {Promise<Location>} Location details
-   */
-  async reverseGeocode(lat, lng) {
-    const url = `https://nominatim.openstreetmap.org/reverse?` +
-      `lat=${lat}&lon=${lng}&format=json`;
-
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'SunSimulator/1.0' }
-    });
-
-    return this.parseLocation(await response.json());
-  }
-
-  /**
-   * Get timezone for coordinates
-   */
-  async getTimezone(lat, lng) {
-    // Use Intl API or external service
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-  }
-}
+const response = await fetch(url, {
+  headers: {
+    'User-Agent': 'SunSimulator/1.0'
+  },
+  signal: controller ? controller.signal : undefined
+});
 ```
 
-## 5. Data Models
+The shipped client does not expose Nominatim search or autocomplete and does not
+call a Mapbox geocoder. It uses the first available supported address field:
+`city`, `town`, `village`, `hamlet`, `municipality`, `county`, `state`, or
+`country`. Every non-success outcome resolves to **Custom Location** without
+changing the selected coordinates or solar state. The visible Nominatim and
+OpenStreetMap attribution is independent of the request outcome.
+
+## 5. Proposed Data Models
 
 ### 5.1 Core Data Models
 
@@ -712,25 +732,32 @@ class MapView {
 ### 6.1 External APIs
 
 ```yaml
-OpenStreetMap Nominatim:
-  endpoint: "https://nominatim.openstreetmap.org"
-  methods:
-    - search: "GET /search?q={query}"
-    - reverse: "GET /reverse?lat={lat}&lon={lng}"
-  rate_limit: "1 req/sec"
-  requires_user_agent: true
+Esri World Imagery:
+  operation: "raster tiles"
+  endpoint: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+  maximum_zoom: 18
+  api_key: "none in the shipped client"
+  current_ui_credit: "Tiles © Esri"
+  service_metadata_credit: "Esri, Vantor, Earthstar Geographics, and the GIS User Community"
+  client_cache: "no application-managed cache; incidental provider/browser caching only"
+  fallback: "none; unavailable images leave a usable blank basemap"
 
-OpenStreetMap Tiles:
-  endpoint: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  subdomains: ["a", "b", "c"]
-  rate_limit: "Heavy use requires tile server"
-
-TimeZone API (optional):
-  primary: "Intl API (browser)"
-  fallback: "GeoNames API"
+Nominatim:
+  operation: "reverse geocoding only"
+  endpoint: "https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=10&addressdetails=1"
+  public_policy_limit: "maximum 1 request/second per application"
+  request_identity: "valid Referer or User-Agent required"
+  client_identity: "attempts User-Agent: SunSimulator/1.0"
+  client_throttle: "500 ms debounce; not an aggregate 1 req/sec limiter"
+  cache: "successful names only, in memory by coordinates rounded to 2 decimals"
+  attribution: "Nominatim and © OpenStreetMap contributors"
+  fallback: "Custom Location for timeout, 204/404, 429, other HTTP/network/CORS/JSON errors"
 ```
 
-### 6.2 Internal API Design
+The OSM tile subdomains used by the superseded design are not requested by the
+shipped app. OpenStreetMap is used only for reverse-geocoded names.
+
+### 6.2 Proposed Internal API Design
 
 ```javascript
 /**
@@ -779,7 +806,12 @@ const API = {
 
 ## 7. Testing Strategy
 
-### 7.1 Test Pyramid
+The shipped verification command is `npm test`, which runs Playwright against the
+static app. No Vitest, Testing Library, coverage-threshold, or unit-test setup is
+shipped. The remainder of this section is a proposed expansion, not a description
+of current tests.
+
+### 7.1 Proposed Test Pyramid
 
 ```
         ┌──────────────────┐
@@ -794,7 +826,7 @@ const API = {
         └──────────────────┘
 ```
 
-### 7.2 Test Categories
+### 7.2 Proposed Test Categories
 
 #### Unit Tests (Critical - 60% coverage target)
 
@@ -952,7 +984,7 @@ test('mobile responsive behavior', async ({ page, viewport }) => {
 });
 ```
 
-### 7.3 Performance Testing
+### 7.3 Proposed Performance Testing
 
 ```javascript
 // tests/performance/calculation-benchmarks.test.js
@@ -980,7 +1012,7 @@ describe('Performance Benchmarks', () => {
 });
 ```
 
-### 7.4 Test Data & Fixtures
+### 7.4 Proposed Test Data & Fixtures
 
 ```
 tests/
@@ -1001,7 +1033,7 @@ tests/
     └── test-setup.js           # Global test setup
 ```
 
-## 8. Performance Optimization
+## 8. Proposed Performance Optimization
 
 ### 8.1 Calculation Optimization
 
@@ -1126,7 +1158,7 @@ self.addEventListener('message', (e) => {
 
 ## 9. Security Considerations
 
-### 9.1 Input Validation
+### 9.1 Proposed Input Validation
 
 ```javascript
 /**
@@ -1158,41 +1190,31 @@ class InputValidator {
 }
 ```
 
-### 9.2 API Security
+### 9.2 External Service Policy
 
-```javascript
-/**
- * Rate limiting for external API calls
- */
-class RateLimitedGeocodingService extends GeocodingService {
-  constructor() {
-    super();
-    this.requestQueue = [];
-    this.lastRequest = 0;
-    this.minInterval = 1000; // 1 req/sec for Nominatim
-  }
+The public Nominatim instance requires an aggregate maximum of one request per
+second for the whole application, a valid identifying HTTP `Referer` or
+`User-Agent`, clear attribution, and caching. The current client applies a
+500 ms per-update debounce and caches successful names in memory. It cancels
+stale in-flight requests when `AbortController` is available; otherwise it
+ignores their responses by request ID. It does **not** implement a
+one-request-per-second queue, cache
+failures, expose a runtime service switch, or guarantee that browser Fetch will
+send the requested `User-Agent`. HTTP 429 is handled as a visible, recoverable
+fallback rather than proof that requests were compliant.
 
-  async search(query) {
-    await this.enforceRateLimit();
-    return super.search(query);
-  }
+A production deployment that cannot stay below the public policy limit, meet
+the identification requirement, or switch services without an application
+update must use a suitable service through a switchable configuration or proxy.
+The shipped hard-coded public-instance integration is not, by itself, a
+complete Nominatim-policy production configuration.
 
-  async enforceRateLimit() {
-    const now = Date.now();
-    const timeSinceLastRequest = now - this.lastRequest;
+### 9.3 Content Security Policy (Future Example)
 
-    if (timeSinceLastRequest < this.minInterval) {
-      await new Promise(resolve =>
-        setTimeout(resolve, this.minInterval - timeSinceLastRequest)
-      );
-    }
-
-    this.lastRequest = Date.now();
-  }
-}
-```
-
-### 9.3 Content Security Policy
+No CSP is deployed. The example below is not compatible with the current
+inline application script as written and must be redesigned and tested before
+adoption; the Esri and Nominatim origins document the direct requests that a
+future policy must permit.
 
 ```html
 <!-- index.html -->
@@ -1200,15 +1222,19 @@ class RateLimitedGeocodingService extends GeocodingService {
   default-src 'self';
   script-src 'self';
   style-src 'self' 'unsafe-inline';
-  img-src 'self' https://*.tile.openstreetmap.org data:;
+  img-src 'self' https://server.arcgisonline.com data:;
   connect-src 'self' https://nominatim.openstreetmap.org;
   font-src 'self';
 ">
 ```
 
-## 10. Accessibility
+## 10. Accessibility Requirements and Proposed Markup
 
-### 10.1 ARIA Labels and Roles
+The application includes ARIA and keyboard behaviors, but no WCAG conformance
+audit is part of this repository. The markup and feature examples below are
+proposals, not a compliance claim.
+
+### 10.1 Proposed ARIA Labels and Roles
 
 ```html
 <!-- Map container -->
@@ -1240,7 +1266,7 @@ class RateLimitedGeocodingService extends GeocodingService {
 </div>
 ```
 
-### 10.2 Keyboard Navigation
+### 10.2 Proposed Keyboard Navigation
 
 ```javascript
 /**
@@ -1267,7 +1293,7 @@ class KeyboardController {
 }
 ```
 
-### 10.3 Screen Reader Support
+### 10.3 Proposed Screen Reader Support
 
 ```javascript
 /**
@@ -1292,25 +1318,19 @@ announcer.announce('Sun position updated: altitude 45 degrees, azimuth 180 degre
 
 ## 11. Deployment Architecture
 
-### 11.1 Static Hosting
+### 11.1 Current Static Hosting
 
-```yaml
-Platform: "Netlify / Vercel / GitHub Pages"
-
-Build_Command: "npm run build"
-Publish_Directory: "dist"
-
-Environment_Variables:
-  - NODE_ENV: "production"
-  - VITE_APP_NAME: "Sun Simulator"
-
-Build_Settings:
-  minify: true
-  sourcemap: false
-  compress: true
+```text
+Document root: repository root
+Entry point: index.html
+Build step: none
+Built-in command: python3 serve.py [port]
+Alternative: any static HTTP server or the Docker image
 ```
 
-### 11.2 CDN Strategy
+The shipped package scripts do not define a production build.
+
+### 11.2 Proposed CDN Strategy
 
 ```javascript
 // vite.config.js
@@ -1330,63 +1350,35 @@ export default {
 
 ### 11.3 Caching Strategy
 
-```
-Cache Headers:
-  HTML:          no-cache (always revalidate)
-  JS/CSS:        max-age=31536000, immutable (1 year, hashed filenames)
-  Images:        max-age=604800 (1 week)
-  Map Tiles:     max-age=604800 (1 week)
-  API Responses: max-age=3600 (1 hour)
-```
+```text
+Built-in Python server:
+  HTML:          no-cache, no-store
+  /vendor/:      max-age=31536000, immutable
 
-### 11.4 Progressive Web App
-
-```javascript
-// service-worker.js
-const CACHE_NAME = 'sun-simulator-v1';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/main.js',
-  '/styles.css'
-];
-
-// Cache-first strategy for assets
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
-});
+Application persistence:
+  Geocoding:     successful names only, in memory for the current page
+  Map tiles:     no application cache; incidental browser caching is not guaranteed
+  App shell:     no service worker or manifest
 ```
 
-```json
-// manifest.json
-{
-  "name": "Sun Simulator",
-  "short_name": "SunSim",
-  "description": "Visualize sun position and shadows on an interactive map",
-  "start_url": "/",
-  "display": "standalone",
-  "theme_color": "#FFD700",
-  "background_color": "#FFFFFF",
-  "icons": [
-    {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
-```
+The future cache header values previously shown for hashed assets, imagery,
+tiles, and API responses are not part of the shipped application. The HTML is
+explicitly not persisted, so a cold offline reload has no supported path.
 
-## 12. Monitoring and Analytics
+### 11.4 Progressive Web App (Future Work)
+
+The shipped repository has no service worker, web manifest, installable icons,
+or offline tile dataset. The earlier service-worker and manifest examples were
+design sketches and do not describe existing files.
+
+A future offline implementation must cache the app shell, define explicit
+policies for vendor assets and Esri requests, and use only imagery authorized
+for the intended offline/export use. Caching ordinary World Imagery requests in
+a service worker must not be represented as blanket permission to bundle or
+export the imagery. Until those pieces exist, the supported contract is local
+calculations after a successful load, not full offline operation.
+
+## 12. Proposed Monitoring and Analytics
 
 ### 12.1 Error Tracking
 
@@ -1507,57 +1499,60 @@ Future Scaling (if needed):
 
 ## 14. Architecture Decision Records (ADRs)
 
-### ADR-001: Use Vanilla JavaScript Instead of Framework
+### ADR-001: Use Vanilla JavaScript Instead of a Framework
 
 **Status:** Accepted
 **Date:** 2025-11-14
+**Reconciled:** 2026-09-23
 
 **Context:**
-Need to choose between framework (React/Vue) vs vanilla JavaScript.
+The application needs browser-side calculations and a static deployment without
+a build or framework runtime.
 
 **Decision:**
-Use vanilla JavaScript with Web Components.
+Use vanilla JavaScript and direct DOM updates in `index.html`. Do not use
+Web Components or an application Pub/Sub layer.
 
 **Rationale:**
-- Calculations are CPU-intensive; framework overhead impacts performance
-- Bundle size critical (target <100KB)
-- DOM updates infrequent (only on user interaction)
-- No complex state management needed (simple Pub/Sub sufficient)
-- Web Components provide encapsulation without framework
+- SunCalc and the UI can run directly in supported browsers
+- The static app needs no bundler or framework runtime
+- Existing state is small enough for direct variables and event handlers
 
 **Consequences:**
-- ✅ Smaller bundle size (~60KB vs ~150KB)
-- ✅ Better performance (no virtual DOM overhead)
-- ✅ No framework lock-in
-- ❌ More boilerplate for components
-- ❌ Less tooling ecosystem
+- ✅ No framework or build dependency
+- ✅ Straightforward static deployment
+- ❌ UI organization and state coordination live in one large document
+- ❌ Reuse and unit isolation require future refactoring
 
 ---
 
-### ADR-002: Use Leaflet Instead of Mapbox GL JS
+### ADR-002: Use Leaflet with Esri World Imagery
 
 **Status:** Accepted
 **Date:** 2025-11-14
+**Reconciled:** 2026-09-23
 
 **Context:**
-Need map library for tile rendering and user interaction.
+The map needs 2D tile rendering and user interaction without a configured API
+key in the shipped client.
 
 **Decision:**
-Use Leaflet.js with OpenStreetMap tiles.
+Use the locally vendored Leaflet.js with direct Esri World Imagery tile
+requests. Keep OpenStreetMap limited to optional Nominatim reverse geocoding.
+Mapbox is not a shipped tile or geocoding fallback.
 
 **Rationale:**
-- Size: Leaflet 42KB vs Mapbox GL 500KB
-- 2D overlays are primary use case (no 3D needed)
-- Simpler API, easier to integrate with Canvas overlays
-- No API key required (free OSM tiles)
-- Better mobile performance
+- Leaflet provides the required 2D interaction and overlay integration
+- The Esri endpoint supplies the intended satellite and aerial view
+- The current endpoint requires no key, but use remains subject to attribution
+  and Esri terms; it is not an unrestricted or offline data grant
 
 **Consequences:**
-- ✅ Smaller bundle, faster load
-- ✅ Free tiles, no API costs
-- ✅ Simpler implementation
-- ❌ No 3D features (if needed later, can migrate)
-- ❌ Less "modern" visual style
+- ✅ Satellite and aerial basemap with no configured key
+- ✅ Simple 2D implementation
+- ❌ Imagery requires network access and all credits required by the current Esri terms
+- ❌ No alternate tile provider when requests fail
+- ❌ No guaranteed offline imagery
 
 ---
 
@@ -1588,56 +1583,61 @@ Use HTML5 Canvas for overlay rendering.
 
 ---
 
-### ADR-004: Client-Side Only Architecture (No Backend)
+### ADR-004: Client-Side Application Without an Application Backend
 
 **Status:** Accepted
 **Date:** 2025-11-14
+**Reconciled:** 2026-09-23
 
 **Context:**
-Decide whether to use backend server or client-side only.
+The application can serve its code statically, but it still uses external map,
+geocoding, and browser geolocation services.
 
 **Decision:**
-Pure client-side application, no backend.
+Keep solar calculations and UI state in the browser without an application
+backend or runtime geocoding proxy. Do not claim full offline operation.
 
 **Rationale:**
-- Astronomical calculations work client-side (SunCalc.js)
-- Free hosting (static site hosting)
-- Infinite scalability (CDN)
-- Works offline (PWA)
-- No server maintenance
+- SunCalc performs the core calculations locally
+- Static delivery needs no application server
+- External service failures have non-blocking UI fallbacks
+- A service worker and offline imagery strategy are not implemented
 
 **Consequences:**
-- ✅ Zero hosting costs
-- ✅ Instant scalability
-- ✅ Works offline
-- ✅ No server security concerns
-- ❌ No server-side caching
-- ❌ Limited to client-side calculations
+- ✅ Calculations and controls continue after a successful app load
+- ✅ No application backend to operate
+- ❌ Cold offline reload is unsupported
+- ❌ Fresh Esri imagery requires network access
+- ❌ Public Nominatim use requires deployment-level policy compliance
+- ❌ No persistent application cache or server-side geocoding control
 
 ---
 
 ## 15. Conclusion
 
-This architecture provides:
+The shipped application provides:
 
-✅ **Accuracy**: ±0.3° fixture-validated position and ±2 minute timing bounds
-✅ **Performance**: 60fps rendering, <100ms calculations
-✅ **Scalability**: Client-side only, CDN-based distribution
-✅ **Maintainability**: Modular design, comprehensive tests
-✅ **Accessibility**: WCAG 2.1 AA compliant
-✅ **Mobile-First**: Responsive design, touch-optimized
-✅ **Offline-Ready**: PWA with service worker caching
+- **Reference-checked solar results** for the fixtures covered by Playwright
+- **Static client-side delivery** with no application backend
+- **Direct vanilla-JavaScript controls** for date, time, animation, map, and
+  overlays
+- **Network-dependent Esri imagery** with a blank-map fallback
+- **Optional Nominatim place names** with **Custom Location** fallback
+- **Selected ARIA and keyboard behaviors**, without a WCAG conformance claim
+- **Partial offline operation**: local calculations continue after a successful
+  load, while imagery, place-name lookup, and cold reloads remain
+  network-dependent
 
-**Next Steps:**
-1. Review and approve architecture
-2. Create detailed implementation plan
-3. Set up development environment
-4. Begin TDD implementation (tests first)
-5. Iterative development with continuous testing
+The modular file layout, expanded test pyramid, date-fns tooling, storage layer,
+CDN strategy, and monitoring examples in this draft remain future design.
 
 ---
 
-**Appendix A: Technology Versions**
+**Appendix A: Proposed Technology Versions (Not Shipped)**
+
+This is a target dependency set, not `package.json`. The current static client
+vendors Leaflet, SunCalc, and Flatpickr and uses Playwright as its sole
+development dependency.
 
 ```json
 {
@@ -1658,7 +1658,11 @@ This architecture provides:
 }
 ```
 
-**Appendix B: File Structure (Complete)**
+**Appendix B: Proposed File Structure (Not Shipped)**
+
+The tree below is a future modularization target. The current implementation is
+`index.html`, `serve.py`, vendored assets, and Playwright tests at the repository
+root.
 
 ```
 sun-simulator/
@@ -1799,7 +1803,7 @@ sun-simulator/
 
 **Document Metadata:**
 - **Version:** 1.0.0
-- **Last Updated:** 2025-11-14
+- **Last Updated:** 2026-09-23
 - **Author:** System Architecture Designer
-- **Status:** Ready for Review
-- **Next Step:** Create Implementation Plan
+- **Status:** Draft (mixed as-built contract and future design)
+- **Next Step:** Validate the proposed future-design sections separately

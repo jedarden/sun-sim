@@ -7,8 +7,8 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 **Live:** [sunsim.jedarden.com](https://sunsim.jedarden.com)
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Status](https://img.shields.io/badge/status-production-green.svg)
-![Cost](https://img.shields.io/badge/cost-%240-success.svg)
+![Status](https://img.shields.io/badge/status-live-green.svg)
+![External services](https://img.shields.io/badge/external_services-no_API--key_fees-yellow.svg)
 
 ---
 
@@ -24,7 +24,7 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 
 📍 **GPS Location Button** - One-click location detection using browser geolocation API, with an inline fallback when permission or location is unavailable
 
-🏙️ **Automatic City Detection** - Reverse geocoding with Nominatim to display location names, with timeout/rate-limit/no-result fallbacks and visible attribution
+🏙️ **Automatic Place-Name Detection** - Reverse geocoding with Nominatim to display city, town, county, state, or country names, with timeout/rate-limit/no-result fallbacks and visible attribution
 
 📅 **Date Navigation** - Arrow keys and buttons to scroll through the year
 
@@ -34,7 +34,7 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 
 📱 **Mobile Responsive** - Touch-friendly interface with drag controls
 
-💰 **Zero Cost** - Free satellite imagery, no API keys required
+💰 **No API keys** - Uses public Esri and Nominatim services; network access and provider attribution are required
 
 🎯 **Reference-validated accuracy** - SunCalc 1.9.0 solar calculations (±0.3° position and ±2 minute rise/set in the USNO fixture suite)
 
@@ -132,9 +132,59 @@ python -m http.server 3000
 |-----------|-----------|---------|
 | 📐 Solar Calculations | [SunCalc.js](https://github.com/mourner/suncalc) | ±0.3° in the checked reference cases |
 | 🗺️ Interactive Maps | [Leaflet.js](https://leafletjs.com/) | Pan/zoom controls |
-| 🛰️ Satellite Imagery | [ESRI World Imagery](https://www.arcgis.com/) | Free high-res tiles |
+| 🛰️ Satellite Imagery | [ESRI World Imagery](https://www.arcgis.com/) | Esri-hosted satellite and aerial tiles; requires network access |
+| 📍 Location Names | [Nominatim](https://nominatim.openstreetmap.org/) | Optional reverse geocoding; requires network access for a named result |
 | 📅 Date Picker | [Flatpickr](https://flatpickr.js.org/) | Date selection |
 | 💻 Frontend | Vanilla JavaScript | No framework dependencies |
+
+### Map and location service contract
+
+The shipped browser client calls these public services directly:
+
+| Capability | Request | Current UI credit | When the network is unavailable |
+| --- | --- | --- | --- |
+| Esri World Imagery tiles | `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}` (maximum zoom 18) | `Tiles © Esri` | Leaflet remains usable over a blank map. Panning, zooming, coordinates, overlays, and solar calculations continue; there is no alternate tile layer. |
+| Nominatim reverse geocoding | `https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=10&addressdetails=1` | A Nominatim link and `© OpenStreetMap contributors` remain visible | Coordinates and solar calculations continue; an uncached lookup uses **Custom Location** with an inline status message. |
+
+The Esri credit above describes the shipped UI exactly; this document does not
+claim it is the complete required attribution. Current [World Imagery service
+metadata](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer?f=pjson)
+identifies the source as **Esri, Vantor, Earthstar Geographics, and the GIS User
+Community**. Deployments must review the service's current terms and display all
+credits required for their use.
+
+OpenStreetMap supplies location names, not the basemap. Nominatim requests are
+debounced for 500 ms, successful names are cached in memory by coordinates
+rounded to two decimal places, and an eight-second abort timeout is applied when
+`AbortController` is available. Failures are not cached. A timeout, no result,
+HTTP 429, or network/CORS/JSON failure does not block the rest of the app.
+
+The [Nominatim public-service policy](https://operations.osmfoundation.org/policies/nominatim/)
+allows an absolute maximum of one request per second per application, requires
+an identifying HTTP `Referer` or `User-Agent`, and requires visible attribution
+and caching. The request attempts `User-Agent: SunSimulator/1.0`, but browser
+Fetch support for overriding this header varies. The 500 ms debounce is not an
+aggregate one-request-per-second limiter, so deployments must not treat the
+public endpoint as a quota-backed production geocoder. The shipped hard-coded
+public-instance integration is not, by itself, a complete Nominatim-policy
+configuration. Operators remain responsible for compliance with the current
+policy and the [Esri terms and data
+attributions](https://www.esri.com/en-us/legal/terms).
+
+### Offline behavior
+
+There is no service worker, web manifest, application-managed map-tile cache, or
+offline reload guarantee. Provider or browser caching may retain an incidental
+tile, but that is not an offline guarantee. A successful load is still required
+before disconnecting.
+
+| Functionality | After the app has loaded | Requires network |
+| --- | --- | --- |
+| Solar calculations, date/timeline controls, animation, and overlays | Continue locally | No |
+| Map interaction and coordinate selection | Continue; imagery may be blank | For fresh Esri tiles |
+| Location-name lookup | A cached name remains in memory; an uncached lookup uses **Custom Location** | For a live place name |
+| GPS button | Uses the browser geolocation service; an offline positioning source may be available | Not guaranteed by this app |
+| Cold start or refresh while offline | Not supported as a service contract | Yes |
 
 ---
 
@@ -197,8 +247,8 @@ MIT License - Free to use, modify, and distribute.
 
 - **SunCalc** - Vladimir Agafonkin ([mourner/suncalc](https://github.com/mourner/suncalc))
 - **Leaflet** - Interactive mapping library
-- **ESRI** - Satellite imagery provider
-- **OpenStreetMap** - Map data contributors
+- **ESRI** - World Imagery satellite and aerial tile provider
+- **OpenStreetMap** - Reverse-geocoded location data through Nominatim
 
 ---
 
@@ -212,7 +262,7 @@ For issues or questions:
 ---
 
 <p align="center">
-  <strong>Status:</strong> ✅ Production Ready | <strong>Release:</strong> 0.1.15 | <strong>Cost:</strong> $0
+  <strong>Status:</strong> Live | <strong>Release:</strong> 0.1.15 | <strong>External services:</strong> No API-key fees
 </p>
 
 <p align="center">

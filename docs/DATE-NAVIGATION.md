@@ -270,10 +270,14 @@ This ensures:
 - **Compass redraw**: ~10ms (smooth)
 
 ### Efficiency
-- No server requests needed
-- All calculations client-side
-- Works offline after initial load
-- No rate limiting
+- Date/time changes and all solar calculations run client-side
+- No application-server request is needed for the calculation itself
+- Date, time, timeline, animation, and location updates all refresh the location
+  name; an uncached coordinate can therefore schedule a debounced Nominatim
+  request, while rapid updates can postpone or cancel it
+- Nominatim's public policy allows at most one request per second per
+  application, and the client has no aggregate rate limiter or offline reload
+  guarantee
 
 ---
 

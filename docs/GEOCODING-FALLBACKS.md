@@ -37,11 +37,17 @@ automatically, so the user remains in control of the next attempt.
 
 ## Reverse-geocoding outcomes
 
-The request is sent to the Nominatim reverse endpoint with a cache key rounded
-to two decimal places. Requests are debounced, and each request has an
-eight-second abort timeout. Successful names are cached for the rounded
-coordinates so map movement does not repeatedly hit the service; failures are
-not cached, so the same point can be retried.
+The request is sent to:
+
+```text
+https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=10&addressdetails=1
+```
+
+Its cache key is rounded to two decimal places. Requests are debounced for
+500 ms, and an eight-second abort timeout is applied when `AbortController` is
+available. Successful names are cached for the rounded coordinates so map
+movement does not repeatedly hit the service; failures are not cached, so the
+same point is retried only after a later application update, not automatically.
 
 | Nominatim outcome | Status text | Name fallback |
 | --- | --- | --- |
@@ -61,15 +67,37 @@ panel. Users can always select a different map point and retry either service.
 Reverse-geocoded names are provided by
 [Nominatim](https://nominatim.openstreetmap.org/), and the location panel links
 to the [OpenStreetMap contributors' copyright notice](https://www.openstreetmap.org/copyright).
-The request identifies the application with the existing
-`SunSimulator/1.0` user-agent value. The service may impose rate limits; a 429 is
-handled as a recoverable fallback rather than as an application error. The
-client-side debounce and cache reduce unnecessary requests, but they do not
-promise a service quota or bypass a server-side limit.
+The request attempts `User-Agent: SunSimulator/1.0`, although browser Fetch
+support for overriding `User-Agent` varies. Nominatim's
+[public-service policy](https://operations.osmfoundation.org/policies/nominatim/)
+requires an identifying HTTP `Referer` or `User-Agent`, visible attribution, and
+an absolute maximum of one request per second per application.
+
+The 500 ms debounce and successful-result cache reduce requests but do not
+implement an aggregate one-request-per-second limiter, identify the app on
+every browser, or promise a service quota. A 429 is handled as a recoverable
+fallback rather than as proof of compliance. Because the shipped client has no
+runtime service switch or proxy, the hard-coded public-instance integration is
+not, by itself, a complete Nominatim-policy configuration. Deployments that
+cannot meet the policy need a switchable service configuration or proxy.
+
+## Offline behavior
+
+If the page and its vendored scripts have already loaded, solar calculations,
+map interaction, and controls continue when Nominatim is unreachable. A name
+already cached for the rounded coordinates remains in memory; an uncached lookup
+uses **Custom Location** and is not retried until a later application update.
+Browser geolocation may work without the internet when the platform has an
+offline positioning source, but that is outside this application's control. The
+app has no service worker or persistent geocoding cache, so a cold start or
+refresh while offline is not supported.
 
 ## Verification
 
 `tests/geolocation-fallbacks.spec.js` mocks the browser Geolocation API and
 Nominatim responses. It covers permission denial, unavailable positions,
-timeout, rate limiting, and no-result responses, asserting that the status,
-attribution, fallback name, and normal controls remain usable in every case.
+abort-error handling, rate limiting, and no-result responses, asserting that the
+status, attribution, fallback name, and normal controls remain usable in every
+case. It does not verify the eight-second timer, operation without
+`AbortController`, an effective on-wire `User-Agent`, or public-service
+compliance.
