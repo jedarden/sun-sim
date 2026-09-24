@@ -129,6 +129,12 @@ test.describe('Documented user workflows', () => {
     await loadApp(page);
   });
 
+  test('renders the complete Esri World Imagery attribution', async ({ page }) => {
+    await expect(page.locator('.leaflet-control-attribution')).toContainText(
+      'Tiles © Esri, Vantor, Earthstar Geographics, and the GIS User Community'
+    );
+  });
+
   test('selects a location by dragging the map', async ({ page }) => {
     const before = await appDate(page);
     const map = page.locator('#map');

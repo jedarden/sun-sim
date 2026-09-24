@@ -47,7 +47,7 @@ not proxy, retry through another provider, or switch either endpoint at runtime.
 
 ```text
 Tiles:       https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}
-Current UI credit: Tiles © Esri
+Current UI credit: Tiles © Esri, Vantor, Earthstar Geographics, and the GIS User Community
 Maximum zoom: 18
 
 Geocoding:   https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=10&addressdetails=1
@@ -55,13 +55,12 @@ Attribution: Nominatim and © OpenStreetMap contributors
 Request identity: attempts User-Agent: SunSimulator/1.0
 ```
 
-`Tiles © Esri` is the shipped UI credit, not a claim that it is the complete
-required attribution. Current [World Imagery service
+`Tiles © Esri, Vantor, Earthstar Geographics, and the GIS User Community` is the
+shipped UI credit. Current [World Imagery service
 metadata](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer?f=pjson)
-identifies the source as Esri, Vantor, Earthstar Geographics, and the GIS User
-Community. Deployments must review the current [Esri terms and data
-attributions](https://www.esri.com/en-us/legal/terms) and display every credit
-required for their use.
+identifies the same sources. Deployments must review the current [Esri terms
+and data attributions](https://www.esri.com/en-us/legal/terms) and keep the
+displayed credits aligned with their use.
 
 Esri imagery is the only basemap layer. If its tiles fail, Leaflet keeps its
 controls and map state, while unavailable images produce a blank basemap;
@@ -171,7 +170,7 @@ Geocoding:
 Tiles:
   provider: "Esri World Imagery"
   endpoint: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-  current_ui_credit: "Tiles © Esri"
+  current_ui_credit: "Tiles © Esri, Vantor, Earthstar Geographics, and the GIS User Community"
   service_metadata_credit: "Esri, Vantor, Earthstar Geographics, and the GIS User Community"
   fallback: "none; blank basemap"
 ```
@@ -607,7 +606,7 @@ map = L.map('map', {
 L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   {
-    attribution: 'Tiles © Esri',
+    attribution: 'Tiles © Esri, Vantor, Earthstar Geographics, and the GIS User Community',
     maxZoom: 18
   }
 ).addTo(map);
@@ -737,7 +736,7 @@ Esri World Imagery:
   endpoint: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
   maximum_zoom: 18
   api_key: "none in the shipped client"
-  current_ui_credit: "Tiles © Esri"
+  current_ui_credit: "Tiles © Esri, Vantor, Earthstar Geographics, and the GIS User Community"
   service_metadata_credit: "Esri, Vantor, Earthstar Geographics, and the GIS User Community"
   client_cache: "no application-managed cache; incidental provider/browser caching only"
   fallback: "none; unavailable images leave a usable blank basemap"

@@ -143,15 +143,14 @@ The shipped browser client calls these public services directly:
 
 | Capability | Request | Current UI credit | When the network is unavailable |
 | --- | --- | --- | --- |
-| Esri World Imagery tiles | `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}` (maximum zoom 18) | `Tiles © Esri` | Leaflet remains usable over a blank map. Panning, zooming, coordinates, overlays, and solar calculations continue; there is no alternate tile layer. |
+| Esri World Imagery tiles | `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}` (maximum zoom 18) | `Tiles © Esri, Vantor, Earthstar Geographics, and the GIS User Community` | Leaflet remains usable over a blank map. Panning, zooming, coordinates, overlays, and solar calculations continue; there is no alternate tile layer. |
 | Nominatim reverse geocoding | `https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=10&addressdetails=1` | A Nominatim link and `© OpenStreetMap contributors` remain visible | Coordinates and solar calculations continue; an uncached lookup uses **Custom Location** with an inline status message. |
 
-The Esri credit above describes the shipped UI exactly; this document does not
-claim it is the complete required attribution. Current [World Imagery service
+The Esri credit above is the shipped UI credit. Current [World Imagery service
 metadata](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer?f=pjson)
-identifies the source as **Esri, Vantor, Earthstar Geographics, and the GIS User
-Community**. Deployments must review the service's current terms and display all
-credits required for their use.
+identifies the same sources. Deployments must review the current [Esri terms and
+data attributions](https://www.esri.com/en-us/legal/terms) and keep the displayed
+credits aligned with their use.
 
 OpenStreetMap supplies location names, not the basemap. Nominatim requests are
 debounced for 500 ms, successful names are cached in memory by coordinates
