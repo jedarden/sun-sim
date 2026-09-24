@@ -425,4 +425,49 @@ test.describe('Documented user workflows', () => {
     await expect(page.locator('.play-label')).toHaveText('Play');
     expect(await pendingAnimationFrames(page)).toBe(0);
   });
+
+  test('keeps calculations and controls available after going offline', async ({ page, context }) => {
+    await expect(page.locator('.location-name')).toHaveText('Test City');
+    await page.unroute(nominatimPattern);
+    await page.unroute(mapTilePattern);
+    await installAnimationClock(page);
+    await context.setOffline(true);
+
+    try {
+      expect(await page.evaluate(() => navigator.onLine)).toBe(false);
+
+      await setAppDate(page, '2024-06-21T12:00:00.000Z');
+      await expectSunDisplaySynchronized(page);
+
+      await page.locator('#btn-next-day').click();
+      await expect(page.locator('#date-picker')).toHaveValue('2024-06-22');
+      await expectSunDisplaySynchronized(page);
+
+      const timeline = page.locator('#timeline-canvas');
+      const box = await timeline.boundingBox();
+      expect(box).not.toBeNull();
+      await timeline.click({ position: { x: box.width * 0.25, y: box.height / 2 } });
+      await expectAppTime(page, 6 * 60);
+      await expectSunDisplaySynchronized(page);
+
+      const speedButton = page.locator('.speed-btn[data-speed="60x"]');
+      await speedButton.click();
+      await expect(speedButton).toHaveClass(/active/);
+      const playButton = page.locator('#btn-play-pause');
+      const beforeAnimation = await page.evaluate(() => currentDate.getTime());
+      await playButton.click();
+      await expect(page.locator('.play-label')).toHaveText('Pause');
+      await stepAnimationFrame(page, 1000);
+      await stepAnimationFrame(page, 1100);
+      expect(await page.evaluate(() => currentDate.getTime())).toBe(beforeAnimation + 360000);
+      await expectSunDisplaySynchronized(page);
+
+      await playButton.click();
+      await expect(page.locator('.play-label')).toHaveText('Play');
+      expect(await pendingAnimationFrames(page)).toBe(0);
+    } finally {
+      await page.evaluate(() => pauseAnimation());
+      await context.setOffline(false);
+    }
+  });
 });

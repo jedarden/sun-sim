@@ -8,7 +8,7 @@ The repository has eight complementary Playwright suites:
 - `tests/solar-calculations.spec.js` provides broader smoke coverage for equinox, seasonal, and polar UI states.
 - `tests/timezone.spec.js` verifies the browser-timezone display contract across DST transitions, UTC date boundaries, the date line, and both hemispheres.
 - `tests/geolocation-fallbacks.spec.js` verifies that GPS and Nominatim failures remain inline and non-blocking.
-- `tests/user-workflows.spec.js` exercises map selection, date controls, keyboard shortcuts, presets, timeline scrubbing, animation controls, and midnight rollover.
+- `tests/user-workflows.spec.js` exercises map selection, date controls, keyboard shortcuts, presets, timeline scrubbing, animation controls, midnight rollover, and the partial-offline contract after a successful load.
 - `tests/visual-overlays.spec.js` provides screenshot baselines and functional assertions for compass orientation and labels, equinox and polar bearing states, marker visibility, redraw/resize behavior, the sun-path overlay, map repositioning, and the color-coded timeline.
 - `tests/performance.spec.js` measures native animation-frame cadence for map overlays, sun-path rendering, timeline dragging, and animation at desktop and mobile viewports.
 - `tests/mobile.spec.js` verifies the stacked mobile layout, 44px controls, touch map pan and zoom, touch-driven controls and timeline scrubbing, and canvas rendering across narrow mobile viewport sizes.
@@ -82,6 +82,8 @@ npx playwright test tests/geolocation-fallbacks.spec.js
 ## User workflow coverage
 
 The user workflow suite drives the documented controls in Chromium. It covers map dragging for location selection, all date navigation buttons and keyboard shortcuts, seasonal date presets, mouse and touch timeline scrubbing, play/pause behavior, every speed preset, and animation rollover across midnight.
+
+Its partial-offline test completes a successful online load, removes the external-service mocks, and sets the browser context offline without reloading. It then verifies that the vendored solar calculations, next-day navigation, timeline scrubbing, speed selection, and play/pause controls remain synchronized and usable. The test intentionally does not claim offline imagery, place-name lookup, or cold reload support.
 
 Run it directly with:
 
