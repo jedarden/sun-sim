@@ -73,13 +73,34 @@ support for overriding `User-Agent` varies. Nominatim's
 requires an identifying HTTP `Referer` or `User-Agent`, visible attribution, and
 an absolute maximum of one request per second per application.
 
+### Production request-identity verification
+
+On 2026-09-24, Chromium 151.0.7922.173 loaded the production page at
+`https://sunsim.jedarden.com/` and the page's automatic reverse-geocoding
+request was observed at the Nominatim endpoint with these request headers:
+
+```text
+Referer: https://sunsim.jedarden.com/
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36
+```
+
+The attempted `SunSimulator/1.0` value was not present on the wire. The
+browser's default `Referer` was instead present, identifies the production
+Sun Simulator origin, and is sufficient for the policy's request-identity
+requirement independently of the stock browser `User-Agent`. Nominatim returned
+HTTP 200 with a JSON response for that observed production request. This is a
+point-in-time verification of identity for the deployed origin; a later
+deployment or Referrer-Policy change requires repeating it.
+
 The 500 ms debounce and successful-result cache reduce requests but do not
-implement an aggregate one-request-per-second limiter, identify the app on
-every browser, or promise a service quota. A 429 is handled as a recoverable
-fallback rather than as proof of compliance. Because the shipped client has no
-runtime service switch or proxy, the hard-coded public-instance integration is
-not, by itself, a complete Nominatim-policy configuration. Deployments that
-cannot meet the policy need a switchable service configuration or proxy.
+implement an aggregate one-request-per-second limiter or promise a service
+quota. A 429 is handled as a recoverable fallback rather than as proof of
+compliance. The verified Referer addresses request identity only; it does not
+replace the policy's rate, caching, attribution, or service-switching
+requirements. Because the shipped client has no runtime service switch or proxy,
+the hard-coded public-instance integration is not, by itself, a complete
+Nominatim-policy configuration. Deployments that cannot meet the policy need a
+switchable service configuration or proxy.
 
 ## Offline behavior
 
@@ -99,5 +120,7 @@ Nominatim responses. It covers permission denial, unavailable positions,
 abort-error handling, rate limiting, and no-result responses, asserting that the
 status, attribution, fallback name, and normal controls remain usable in every
 case. It does not verify the eight-second timer, operation without
-`AbortController`, an effective on-wire `User-Agent`, or public-service
-compliance.
+`AbortController`, an effective on-wire `User-Agent`, or the public service's
+rate-limit requirements. The production request-identity verification above is
+an out-of-band check of the deployed origin rather than part of the mocked test
+suite.
