@@ -1417,11 +1417,55 @@
         // Update functions
         const GEOCODE_TIMEOUT_MS = 8000;
         const GEOCODE_DEBOUNCE_MS = 500;
+        const GEOCODE_MIN_REQUEST_INTERVAL_MS = 1000;
         const GEOCODE_FALLBACK_NAME = 'Custom Location';
         let geocodeCache = Object.create(null);
         let geocodeTimeout = null;
         let geocodeAbortController = null;
         let geocodeRequestId = 0;
+        let geocodeThrottleTail = Promise.resolve();
+        let geocodeNextRequestAt = -Infinity;
+
+        function getGeocodeNow() {
+            if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+                return performance.now();
+            }
+            return Date.now();
+        }
+
+        function hasCachedGeocode(cacheKey) {
+            return Object.prototype.hasOwnProperty.call(geocodeCache, cacheKey);
+        }
+
+        function waitForGeocodeRequestSlot(isCurrent, canRequest, request) {
+            const previous = geocodeThrottleTail;
+            let release;
+            geocodeThrottleTail = new Promise(resolve => {
+                release = resolve;
+            });
+
+            return previous.then(async () => {
+                let result;
+                try {
+                    if (!isCurrent()) return null;
+                    if (!canRequest()) return false;
+
+                    const waitMs = geocodeNextRequestAt - getGeocodeNow();
+                    if (waitMs > 0) {
+                        await new Promise(resolve => setTimeout(resolve, waitMs));
+                    }
+
+                    if (!isCurrent()) return null;
+                    if (!canRequest()) return false;
+
+                    geocodeNextRequestAt = getGeocodeNow() + GEOCODE_MIN_REQUEST_INTERVAL_MS;
+                    result = request();
+                } finally {
+                    release();
+                }
+                return result;
+            });
+        }
 
         function setLocationStatus(message, kind = 'info') {
             const status = document.getElementById('location-status');
@@ -1475,13 +1519,7 @@
             return null;
         }
 
-        async function requestReverseGeocode(lat, lon) {
-            const cacheKey = `${lat.toFixed(2)},${lon.toFixed(2)}`;
-
-            if (Object.prototype.hasOwnProperty.call(geocodeCache, cacheKey)) {
-                return geocodeCache[cacheKey];
-            }
-
+        async function fetchReverseGeocode(lat, lon, cacheKey) {
             const controller = typeof AbortController === 'function' ? new AbortController() : null;
             geocodeAbortController = controller;
             let timeoutId = null;
@@ -1536,6 +1574,30 @@
             return result;
         }
 
+        async function requestReverseGeocode(lat, lon, isCurrent = () => true) {
+            const cacheKey = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+            const canRequest = () => !hasCachedGeocode(cacheKey);
+
+            if (!canRequest()) {
+                return geocodeCache[cacheKey];
+            }
+
+            const result = await waitForGeocodeRequestSlot(
+                isCurrent,
+                canRequest,
+                () => fetchReverseGeocode(lat, lon, cacheKey)
+            );
+            if (result === null) {
+                return getGeocodeFallback('unavailable');
+            }
+            if (result === false) {
+                return hasCachedGeocode(cacheKey)
+                    ? geocodeCache[cacheKey]
+                    : getGeocodeFallback('unavailable');
+            }
+            return result;
+        }
+
         async function reverseGeocode(lat, lon) {
             const result = await requestReverseGeocode(lat, lon);
             return result.name;
@@ -1559,7 +1621,11 @@
 
             geocodeTimeout = setTimeout(async () => {
                 setLocationStatus('Looking up location name…');
-                const result = await requestReverseGeocode(lat, lon);
+                const result = await requestReverseGeocode(
+                    lat,
+                    lon,
+                    () => requestId === geocodeRequestId
+                );
                 if (requestId !== geocodeRequestId) return;
 
                 document.querySelector('.location-name').textContent = result.name;

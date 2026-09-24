@@ -68,22 +68,26 @@ coordinates, overlays, and solar calculations continue. There is no OSM or
 Mapbox tile fallback.
 
 Nominatim is optional and is not the tile provider. Requests are debounced by
-500 ms, successful results are cached in memory using coordinates rounded to two
-decimal places, and failures are not cached, so a later update can retry them. If
-`AbortController` exists, a
-request is aborted after eight seconds. A timeout, HTTP 204/404, HTTP 429,
-other HTTP failure, missing supported address field, CORS/network error, or JSON
-parse error leaves the coordinates and calculations intact and displays
-**Custom Location** with a status message.
+500 ms, and a shared client-side limiter keeps uncached request starts at least
+1,000 ms apart. Successful results are cached in memory using coordinates
+rounded to two decimal places, and failures are not cached, so a later update
+can retry them. If `AbortController` exists, a request is aborted after eight
+seconds. A stale location waiting for a request slot is discarded so the latest
+map location wins. A timeout, HTTP 204/404, HTTP 429, other HTTP failure,
+missing supported address field, CORS/network error, or JSON parse error leaves
+the coordinates and calculations intact and displays **Custom Location** with a
+status message.
 
 The [public Nominatim policy](https://operations.osmfoundation.org/policies/nominatim/)
 sets an absolute maximum of one request per second per application and requires
 an identifying `Referer` or `User-Agent`, visible attribution, and caching. The
-500 ms debounce is not an aggregate rate limiter, and browser Fetch support for
-setting `User-Agent` varies. The production operator is responsible for policy
-compliance and for selecting a suitable service or proxy if public-instance
-access is unsuitable. OpenStreetMap attribution remains visible even on
-fallback; the current Esri UI credit remains attached to the tile layer.
+shared limiter coordinates requests made by this page, while the debounce and
+cache reduce unnecessary work. Browser Fetch support for setting `User-Agent`
+varies. The limiter cannot coordinate multiple tabs, users, or deployments;
+the production operator remains responsible for policy compliance and for
+selecting a suitable service or proxy if public-instance access is unsuitable.
+OpenStreetMap attribution remains visible even on fallback; the current Esri UI
+credit remains attached to the tile layer.
 
 After a successful application load, the local Leaflet, SunCalc, and Flatpickr
 assets and the date, timeline, animation, overlay, and calculation paths need no
@@ -747,7 +751,7 @@ Nominatim:
   public_policy_limit: "maximum 1 request/second per application"
   request_identity: "valid Referer or User-Agent required"
   client_identity: "attempts User-Agent: SunSimulator/1.0"
-  client_throttle: "500 ms debounce; not an aggregate 1 req/sec limiter"
+  client_throttle: "500 ms debounce plus shared 1,000 ms minimum uncached request-start interval"
   cache: "successful names only, in memory by coordinates rounded to 2 decimals"
   attribution: "Nominatim and © OpenStreetMap contributors"
   fallback: "Custom Location for timeout, 204/404, 429, other HTTP/network/CORS/JSON errors"
@@ -1194,13 +1198,15 @@ class InputValidator {
 The public Nominatim instance requires an aggregate maximum of one request per
 second for the whole application, a valid identifying HTTP `Referer` or
 `User-Agent`, clear attribution, and caching. The current client applies a
-500 ms per-update debounce and caches successful names in memory. It cancels
-stale in-flight requests when `AbortController` is available; otherwise it
-ignores their responses by request ID. It does **not** implement a
-one-request-per-second queue, cache
-failures, expose a runtime service switch, or guarantee that browser Fetch will
-send the requested `User-Agent`. HTTP 429 is handled as a visible, recoverable
-fallback rather than proof that requests were compliant.
+500 ms per-update debounce, a shared 1,000 ms minimum interval between uncached
+request starts, and an in-memory successful-result cache. It cancels stale
+in-flight requests when `AbortController` is available; otherwise it ignores
+their responses by request ID. Stale requests waiting for a slot are coalesced
+so the latest location can proceed. It does **not** coordinate multiple tabs,
+users, or deployments, cache failures, expose a runtime service switch, or
+guarantee that browser Fetch will send the requested `User-Agent`. HTTP 429 is
+handled as a visible, recoverable fallback rather than proof that requests were
+compliant.
 
 A production deployment that cannot stay below the public policy limit, meet
 the identification requirement, or switch services without an application

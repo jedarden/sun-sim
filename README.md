@@ -155,19 +155,20 @@ credits aligned with their use.
 OpenStreetMap supplies location names, not the basemap. Nominatim requests are
 debounced for 500 ms, successful names are cached in memory by coordinates
 rounded to two decimal places, and an eight-second abort timeout is applied when
-`AbortController` is available. Failures are not cached. A timeout, no result,
-HTTP 429, or network/CORS/JSON failure does not block the rest of the app.
+`AbortController` is available. A shared client-side limiter keeps uncached
+request starts at least 1,000 ms apart; cache hits do not consume a request slot,
+and stale queued locations are coalesced. Failures are not cached. A timeout, no
+result, HTTP 429, or network/CORS/JSON failure does not block the rest of the app.
 
 The [Nominatim public-service policy](https://operations.osmfoundation.org/policies/nominatim/)
 allows an absolute maximum of one request per second per application, requires
 an identifying HTTP `Referer` or `User-Agent`, and requires visible attribution
 and caching. The request attempts `User-Agent: SunSimulator/1.0`, but browser
-Fetch support for overriding this header varies. The 500 ms debounce is not an
-aggregate one-request-per-second limiter, so deployments must not treat the
-public endpoint as a quota-backed production geocoder. The shipped hard-coded
-public-instance integration is not, by itself, a complete Nominatim-policy
-configuration. Operators remain responsible for compliance with the current
-policy and the [Esri terms and data
+Fetch support for overriding this header varies. The shared limiter coordinates
+requests made by this page, but it cannot coordinate multiple browser tabs,
+users, or deployments. The shipped hard-coded public-instance integration is not,
+by itself, a complete Nominatim-policy configuration. Operators remain
+responsible for compliance with the current policy and the [Esri terms and data
 attributions](https://www.esri.com/en-us/legal/terms).
 
 ### Offline behavior

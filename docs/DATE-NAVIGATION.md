@@ -276,8 +276,9 @@ This ensures:
   name; an uncached coordinate can therefore schedule a debounced Nominatim
   request, while rapid updates can postpone or cancel it
 - Nominatim's public policy allows at most one request per second per
-  application, and the client has no aggregate rate limiter or offline reload
-  guarantee
+  application, and the client enforces that interval for uncached requests within
+  the loaded page; multiple tabs or deployments still need a shared service or
+  proxy, and offline reload is not guaranteed
 
 ---
 

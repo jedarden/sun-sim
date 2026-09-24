@@ -45,9 +45,12 @@ https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom
 
 Its cache key is rounded to two decimal places. Requests are debounced for
 500 ms, and an eight-second abort timeout is applied when `AbortController` is
-available. Successful names are cached for the rounded coordinates so map
-movement does not repeatedly hit the service; failures are not cached, so the
-same point is retried only after a later application update, not automatically.
+available. A shared limiter keeps uncached Nominatim request starts at least
+1,000 ms apart. Cache hits do not consume a slot, and a location that becomes
+stale while waiting is discarded so the latest map location wins. Successful
+names are cached for the rounded coordinates so map movement does not
+repeatedly hit the service; failures are not cached, so the same point is
+retried only after a later application update, not automatically.
 
 | Nominatim outcome | Status text | Name fallback |
 | --- | --- | --- |
@@ -92,15 +95,18 @@ HTTP 200 with a JSON response for that observed production request. This is a
 point-in-time verification of identity for the deployed origin; a later
 deployment or Referrer-Policy change requires repeating it.
 
-The 500 ms debounce and successful-result cache reduce requests but do not
-implement an aggregate one-request-per-second limiter or promise a service
-quota. A 429 is handled as a recoverable fallback rather than as proof of
-compliance. The verified Referer addresses request identity only; it does not
-replace the policy's rate, caching, attribution, or service-switching
-requirements. Because the shipped client has no runtime service switch or proxy,
-the hard-coded public-instance integration is not, by itself, a complete
-Nominatim-policy configuration. Deployments that cannot meet the policy need a
-switchable service configuration or proxy.
+The 500 ms debounce and successful-result cache reduce requests, while the
+shared limiter enforces a 1,000 ms minimum interval between uncached request
+starts within the loaded application. Cache hits do not consume a request slot,
+and stale queued locations are coalesced. A 429 is handled as a
+recoverable fallback rather than as proof of compliance. The limiter cannot
+coordinate multiple tabs, users, or deployments, and the verified Referer
+addresses request identity only; it does not replace the policy's rate,
+caching, attribution, or service-switching requirements. Because the shipped
+client has no runtime service switch or proxy, the hard-coded public-instance
+integration is not, by itself, a complete Nominatim-policy configuration.
+Deployments that cannot meet the policy need a switchable service configuration
+or proxy.
 
 ## Offline behavior
 
@@ -117,10 +123,11 @@ refresh while offline is not supported.
 
 `tests/geolocation-fallbacks.spec.js` mocks the browser Geolocation API and
 Nominatim responses. It covers permission denial, unavailable positions,
-abort-error handling, rate limiting, and no-result responses, asserting that the
-status, attribution, fallback name, and normal controls remain usable in every
-case. It does not verify the eight-second timer, operation without
-`AbortController`, an effective on-wire `User-Agent`, or the public service's
-rate-limit requirements. The production request-identity verification above is
-an out-of-band check of the deployed origin rather than part of the mocked test
-suite.
+abort-error handling, rate limiting, no-result responses, rapid map movement,
+request coalescing, one-second request spacing, latest-location protection, and
+cache behavior, asserting that the status, attribution, fallback name, and
+normal controls remain usable. It does not verify the eight-second timer,
+operation without `AbortController`, an effective on-wire `User-Agent`, or the
+public service's rate-limit requirements. The production request-identity
+verification above is an out-of-band check of the deployed origin rather than
+part of the mocked test suite.

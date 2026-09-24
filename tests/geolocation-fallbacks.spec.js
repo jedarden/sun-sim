@@ -18,6 +18,49 @@ async function installNominatimResponse(page, status, body) {
   });
 }
 
+async function installNominatimRecorder(page) {
+  await page.addInitScript(() => {
+    const nativeFetch = window.fetch.bind(window);
+    window.__nominatimFetches = [];
+    window.fetch = (input, options) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (!url.includes('nominatim.openstreetmap.org')) {
+        return nativeFetch(input, options);
+      }
+
+      const record = {
+        url,
+        startedAt: performance.now(),
+        aborted: false
+      };
+      window.__nominatimFetches.push(record);
+      if (options && options.signal) {
+        if (options.signal.aborted) record.aborted = true;
+        options.signal.addEventListener('abort', () => {
+          record.aborted = true;
+        }, { once: true });
+      }
+      return nativeFetch(input, options);
+    };
+  });
+}
+
+async function installCoordinateNominatimResponse(page, delayedLat = null, delayMs = 0) {
+  await page.route(nominatimPattern, async (route) => {
+    const url = new URL(route.request().url());
+    const lat = url.searchParams.get('lat');
+    const lon = url.searchParams.get('lon');
+    if (delayedLat !== null && Number(lat).toFixed(1) === delayedLat && delayMs > 0) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ address: { city: `Place ${Number(lat).toFixed(2)},${Number(lon).toFixed(2)}` } })
+    }).catch(() => {});
+  });
+}
+
 async function installGeolocationError(page, code) {
   await page.addInitScript((errorCode) => {
     Object.defineProperty(navigator, 'geolocation', {
@@ -156,4 +199,102 @@ test('shows a successful reverse-geocoded name and keeps attribution visible', a
   await expect(page.locator('.location-attribution')).toContainText('Nominatim');
   await expect(page.locator('.location-attribution')).toContainText('OpenStreetMap');
   await expectUsable(page);
+});
+
+test.describe('Nominatim request scheduling', () => {
+  test('coalesces rapid map movement and displays the latest location', async ({ page }) => {
+    await installNominatimRecorder(page);
+    await installCoordinateNominatimResponse(page);
+    await loadApp(page);
+    await expect.poll(() => page.locator('.location-name').textContent()).toContain('Place');
+    await page.evaluate(() => {
+      window.__nominatimFetches.length = 0;
+    });
+
+    await page.evaluate(() => {
+      [
+        [41.1, -74.1],
+        [41.2, -74.2],
+        [41.3, -74.3]
+      ].forEach(([lat, lon]) => map.setView([lat, lon], 12, { animate: false }));
+    });
+
+    await expect(page.locator('.location-name')).toHaveText('Place 41.30,-74.30');
+    const requests = await page.evaluate(() => window.__nominatimFetches);
+    expect(requests).toHaveLength(1);
+    expect(Number(new URL(requests[0].url).searchParams.get('lat')).toFixed(1)).toBe('41.3');
+  });
+
+  test('spaces map-movement requests by at least one second', async ({ page }) => {
+    await installNominatimRecorder(page);
+    await installCoordinateNominatimResponse(page);
+    await loadApp(page);
+    await expect.poll(() => page.locator('.location-name').textContent()).toContain('Place');
+    await page.evaluate(() => {
+      window.__nominatimFetches.length = 0;
+    });
+
+    for (const [lat, lon] of [[42.1, -73.1], [42.2, -73.2], [42.3, -73.3]]) {
+      await page.evaluate(([nextLat, nextLon]) => {
+        map.setView([nextLat, nextLon], 12, { animate: false });
+      }, [lat, lon]);
+      await page.waitForTimeout(650);
+    }
+
+    await expect(page.locator('.location-name')).toHaveText('Place 42.30,-73.30');
+    const requests = await page.evaluate(() => window.__nominatimFetches);
+    expect(requests.length).toBeGreaterThanOrEqual(2);
+    expect(requests.length).toBeLessThanOrEqual(3);
+    for (let index = 1; index < requests.length; index += 1) {
+      expect(requests[index].startedAt - requests[index - 1].startedAt).toBeGreaterThanOrEqual(900);
+    }
+  });
+
+  test('serializes direct lookups and reuses cached results', async ({ page }) => {
+    await installNominatimRecorder(page);
+    await installCoordinateNominatimResponse(page);
+    await loadApp(page);
+    await expect.poll(() => page.locator('.location-name').textContent()).toContain('Place');
+    await page.evaluate(() => {
+      window.__nominatimFetches.length = 0;
+    });
+
+    const names = await page.evaluate(async () => Promise.all([
+      reverseGeocode(44.1, -71.1),
+      reverseGeocode(45.1, -70.1)
+    ]));
+    expect(names).toEqual(['Place 44.10,-71.10', 'Place 45.10,-70.10']);
+
+    const requests = await page.evaluate(() => window.__nominatimFetches);
+    expect(requests).toHaveLength(2);
+    expect(requests[1].startedAt - requests[0].startedAt).toBeGreaterThanOrEqual(900);
+
+    const cachedName = await page.evaluate(() => reverseGeocode(44.101, -71.101));
+    expect(cachedName).toBe('Place 44.10,-71.10');
+    expect(await page.evaluate(() => window.__nominatimFetches)).toHaveLength(2);
+  });
+
+  test('aborts an obsolete lookup and keeps the latest location name', async ({ page }) => {
+    await installNominatimRecorder(page);
+    await installCoordinateNominatimResponse(page, '43.1', 1500);
+    await loadApp(page);
+    await expect.poll(() => page.locator('.location-name').textContent()).toContain('Place');
+    await page.evaluate(() => {
+      window.__nominatimFetches.length = 0;
+    });
+
+    await page.evaluate(() => {
+      map.setView([43.1, -72.1], 12, { animate: false });
+    });
+    await expect.poll(() => page.evaluate(() => window.__nominatimFetches.length)).toBe(1);
+    await page.evaluate(() => {
+      map.setView([43.2, -72.2], 12, { animate: false });
+    });
+
+    await expect(page.locator('.location-name')).toHaveText('Place 43.20,-72.20');
+    await page.waitForTimeout(1600);
+    const requests = await page.evaluate(() => window.__nominatimFetches);
+    expect(requests[0].aborted).toBe(true);
+    await expect(page.locator('.location-name')).toHaveText('Place 43.20,-72.20');
+  });
 });
