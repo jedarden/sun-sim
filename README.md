@@ -1,13 +1,20 @@
 # 🌞 Sun Simulator
 
+> **Moved (2026-09-27).** The simulator now lives in the jedarden.com repo as a
+> static page and is served at **https://jedarden.com/sun-simulator/**;
+> `sunsim.jedarden.com` redirects there. This repository is a read-only
+> record: its container, image build and CI are retired, and its open beads
+> were migrated to jedarden.com's store. Make changes in jedarden.com under
+> `public/sun-simulator/` (tests in `tests/sun-simulator/`).
+
 Interactive web application for visualizing sun position, sunrise/sunset times, and solar paths for any location and date/time.
 
 **Timezone behavior:** Solar calculations use absolute instants and the selected coordinates, while all displayed dates and clock times use the browser's local timezone. Selecting a location does not switch the display to that location's timezone or to UTC; DST, UTC date boundaries, and the date line are covered by `tests/timezone.spec.js`.
 
-**Live:** [sunsim.jedarden.com](https://sunsim.jedarden.com)
+**Live:** [jedarden.com/sun-simulator](https://jedarden.com/sun-simulator/)
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Status](https://img.shields.io/badge/status-live-green.svg)
+![Status](https://img.shields.io/badge/status-moved_to_jedarden.com-lightgrey.svg)
 ![External services](https://img.shields.io/badge/external_services-no_API--key_fees-yellow.svg)
 
 ---
