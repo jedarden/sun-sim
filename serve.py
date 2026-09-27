@@ -11,6 +11,10 @@ import sys
 class SunSimulatorHandler(SimpleHTTPRequestHandler):
     """Custom handler with CORS enabled and proper MIME types"""
 
+    # The slim image has no /etc/mime.types; pin the vendored display font's
+    # type rather than trusting the interpreter's built-in table.
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, '.woff2': 'font/woff2'}
+
     def send_response(self, code, message=None):
         # Record the status so end_headers can tell real vendor responses
         # from error responses

@@ -3,15 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sun Simulator - Interactive Sun Path Tracker</title>
+    <title>Sun Path &amp; Shadow Simulator — Jed Arden</title>
+    <meta name="description" content="Free interactive sun path simulator: pick any place on a satellite map and any date to see the sun's arc across the sky, sunrise and sunset bearings, solar noon, altitude, azimuth and day length — with a time-lapse through the day.">
+    <meta name="author" content="Jed Arden">
+    <!-- Canonical home is the path on jedarden.com; this origin is reached
+         through that site's /sun-simulator/ proxy, and sunsim.jedarden.com
+         redirects visitors there. -->
+    <link rel="canonical" href="https://jedarden.com/sun-simulator/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Jed Arden">
+    <meta property="og:title" content="Sun Path &amp; Shadow Simulator">
+    <meta property="og:description" content="See the sun's path over any place on Earth, on any date: sunrise and sunset bearings, solar noon, altitude, azimuth and a time-lapse through the day.">
+    <meta property="og:url" content="https://jedarden.com/sun-simulator/">
+    <meta property="og:image" content="https://jedarden.com/sun-simulator/vendor/og-sun-simulator.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Sun path simulator showing the sun's arc and sunrise and sunset bearings over a satellite map">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:creator" content="@jedardencodes">
+    <meta name="theme-color" content="#8B1A1A">
+    <link rel="icon" type="image/svg+xml" href="https://jedarden.com/favicon.svg">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Sun Path & Shadow Simulator",
+        "url": "https://jedarden.com/sun-simulator/",
+        "description": "Interactive sun path simulator: the sun's arc, sunrise and sunset bearings, solar noon, altitude, azimuth and day length for any location and date.",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any (web browser)",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": { "@type": "Person", "name": "Jed Arden", "url": "https://jedarden.com/" },
+        "codeRepository": "https://github.com/jedarden/sun-sim"
+    }
+    </script>
+    <!-- Theme guard, same contract as jedarden.com: light by default, dark
+         only when the visitor chose it there (shared origin under the proxy). -->
+    <script>
+        try {
+            if (localStorage.theme === 'dark') document.documentElement.dataset.theme = 'dark';
+        } catch (_) { /* storage unavailable: stay light */ }
+    </script>
 
+    <!-- Asset URLs are relative so the page works both at the origin root and
+         under jedarden.com/sun-simulator/. -->
+    <link rel="preload" href="vendor/bricolage-grotesque-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="/vendor/leaflet.css?v=1"/>
+    <link rel="stylesheet" href="vendor/leaflet.css?v=1"/>
 
     <!-- Flatpickr CSS -->
-    <link rel="stylesheet" href="/vendor/flatpickr.min.css?v=1">
+    <link rel="stylesheet" href="vendor/flatpickr.min.css?v=1">
 
     <style>
+        /* Bricolage Grotesque (SIL OFL 1.1, vendor/bricolage-grotesque-OFL.txt):
+           jedarden.com's display face. */
+        @font-face {
+            font-family: 'Bricolage Grotesque Variable';
+            font-style: normal;
+            font-display: swap;
+            font-weight: 200 800;
+            src: url(vendor/bricolage-grotesque-latin-wght-normal.woff2) format('woff2-variations');
+        }
+
+        /* jedarden.com design tokens (src/styles/style.css there). */
+        :root {
+            --red-deep: #8B1A1A;
+            --red: #DC3127;
+            --ink: #0A0A08;
+            --bg: #FFFFFF;
+            --bg-tint: #F9F3EA;
+            --surface: #FFFFFF;
+            --text-c: #1D1D1F;
+            --text-muted-c: #6E6E73;
+            --border-c: #D2D2D7;
+            --card-border: var(--ink);
+            --card-shadow-c: rgba(10, 10, 8, 0.9);
+            --accent-c: #C42B20;
+            --chip-bg: rgba(220, 49, 39, 0.08);
+            --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            --font-display: 'Bricolage Grotesque Variable', var(--font-sans);
+            --motion-fast: 150ms;
+            --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        [data-theme='dark'] {
+            --bg: #070506;
+            --bg-tint: #12100E;
+            --surface: #171310;
+            --text-c: rgba(239, 222, 204, 0.92);
+            --text-muted-c: rgba(239, 222, 204, 0.6);
+            --border-c: rgba(239, 222, 204, 0.22);
+            --card-border: rgba(239, 222, 204, 0.55);
+            --card-shadow-c: rgba(0, 0, 0, 0.9);
+            --accent-c: #E8564C;
+            --chip-bg: rgba(232, 86, 76, 0.14);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -19,45 +107,98 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
-            overflow: hidden;
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text-c);
+        }
+
+        a {
+            color: var(--accent-c);
         }
 
         #app-container {
-            width: 100vw;
+            width: 100%;
             height: 100vh;
+            height: 100svh;
             display: flex;
             flex-direction: column;
         }
 
-        /* Header */
+        /* Header: the jedarden.com burgundy bar */
         #header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 0.75rem 1.5rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            background: var(--red-deep);
+            color: #fff;
+            /* 48px: the app's original header height, so the map (and the
+               overlay snapshots) keep their geometry. */
+            height: 48px;
+            flex: none;
+            padding: 0 1.5rem;
+            box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.14);
             z-index: 1000;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1rem;
+        }
+
+        #header-left {
+            display: flex;
+            align-items: baseline;
+            gap: 0.9rem;
+            min-width: 0;
+        }
+
+        .site-wordmark {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.05rem;
+            white-space: nowrap;
+        }
+
+        .site-wordmark:hover {
+            text-decoration: underline;
         }
 
         h1 {
-            font-size: 1.25rem;
-            font-weight: 600;
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: #fff;
+            padding-left: 0.9rem;
+            border-left: 1px solid rgba(255, 255, 255, 0.35);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         #current-time-display {
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 500;
             opacity: 0.9;
+            font-variant-numeric: tabular-nums;
         }
 
         #header-right {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 1.25rem;
+        }
+
+        .site-links {
+            display: flex;
+            gap: 1.1rem;
+        }
+
+        .site-links a {
+            color: rgba(255, 255, 255, 0.82);
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+
+        .site-links a:hover {
+            color: #fff;
         }
 
         .github-link {
@@ -66,7 +207,7 @@
             color: #fff;
             text-decoration: none;
             opacity: 0.9;
-            transition: opacity 0.2s;
+            transition: opacity var(--motion-fast);
         }
 
         .github-link:hover {
@@ -74,33 +215,47 @@
         }
 
         .github-link svg {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
             fill: currentColor;
         }
 
-        .gps-btn {
+        /* Buttons: ink outline, burgundy for the primary actions */
+        .gps-btn,
+        .play-btn {
             width: 100%;
-            padding: 0.5rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 4px;
+            background: var(--red-deep);
+            color: #fff;
+            border: 2px solid var(--ink);
+            border-radius: 999px;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-family: inherit;
+            font-weight: 600;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            transition: opacity 0.2s, transform 0.1s;
-            margin-top: 0.5rem;
+            transition: background var(--motion-fast) var(--motion-ease), transform 0.1s;
         }
 
-        .gps-btn:hover {
-            opacity: 0.9;
+        [data-theme='dark'] .gps-btn,
+        [data-theme='dark'] .play-btn {
+            border-color: var(--card-border);
         }
 
-        .gps-btn:active {
+        .gps-btn {
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            margin-top: 0.75rem;
+        }
+
+        .gps-btn:hover,
+        .play-btn:hover {
+            background: var(--red);
+        }
+
+        .gps-btn:active,
+        .play-btn:active {
             transform: scale(0.98);
         }
 
@@ -147,29 +302,48 @@
         /* Control panel */
         #control-panel {
             width: 320px;
-            background: #16213e;
+            background: var(--bg-tint);
             padding: 1rem;
             overflow-y: auto;
-            box-shadow: -2px 0 8px rgba(0,0,0,0.3);
+            /* A shadow rather than a border: the divider must not take width
+               from the map, whose overlay the visual snapshots pin. */
+            box-shadow: -2px 0 0 var(--ink);
+            z-index: 1;
+        }
+
+        [data-theme='dark'] #control-panel {
+            box-shadow: -2px 0 0 var(--border-c);
         }
 
         .control-section {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.4rem;
         }
 
+        /* Section eyebrow, as on jedarden.com's page heroes */
         .control-section h3 {
-            font-size: 0.9rem;
-            margin-bottom: 0.75rem;
-            color: #667eea;
-            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.72rem;
+            margin-bottom: 0.7rem;
+            color: var(--accent-c);
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.16em;
+        }
+
+        .control-section h3::before {
+            content: '';
+            width: 1.4rem;
+            height: 2px;
+            background: currentColor;
+            flex: none;
         }
 
         /* Timeline control */
         #timeline-container {
             position: relative;
-            margin: 1rem 0;
+            margin: 0.25rem 0 0.75rem;
         }
 
         #timeline-canvas {
@@ -188,8 +362,8 @@
             display: flex;
             justify-content: space-between;
             font-size: 0.7rem;
-            color: #aaa;
-            margin-top: 0.25rem;
+            color: var(--text-muted-c);
+            margin-top: 0.3rem;
         }
 
         /* Animation controls */
@@ -201,33 +375,12 @@
         }
 
         .play-btn {
-            width: 100%;
             padding: 0.6rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            transition: opacity 0.2s, transform 0.1s, background 0.2s;
+            font-size: 0.95rem;
         }
 
-        .play-btn:hover {
-            opacity: 0.9;
-        }
-
-        .play-btn:active {
-            transform: scale(0.98);
-        }
-
-        /* Red gradient while playing makes the active state obvious */
         .play-btn.playing {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            background: var(--red);
         }
 
         .play-icon {
@@ -235,121 +388,123 @@
             line-height: 1;
         }
 
+        /* Chips: pill outline, the active one inked in (the site's filter chips) */
         .speed-controls {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 0.25rem;
+            gap: 0.35rem;
         }
 
-        .speed-btn {
-            padding: 0.4rem 0.2rem;
-            background: #0f3460;
-            border: 1px solid #667eea;
-            border-radius: 4px;
-            color: #eee;
-            font-size: 0.75rem;
-            font-weight: 500;
+        .speed-btn,
+        .nav-btn,
+        .shortcut-btn {
+            background: var(--surface);
+            border: 2px solid var(--card-border);
+            border-radius: 999px;
+            color: var(--text-c);
+            font-family: inherit;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease);
             text-align: center;
         }
 
-        .speed-btn:hover {
-            background: #667eea;
-            border-color: #764ba2;
+        .speed-btn {
+            padding: 0.35rem 0.2rem;
+            font-size: 0.75rem;
+        }
+
+        .speed-btn:hover,
+        .nav-btn:hover,
+        .shortcut-btn:hover {
+            background: var(--chip-bg);
         }
 
         .speed-btn.active {
-            background: #667eea;
-            border-color: #764ba2;
+            background: var(--ink);
             color: #fff;
         }
 
+        [data-theme='dark'] .speed-btn.active {
+            background: var(--text-c);
+            color: var(--bg);
+        }
+
         /* Date navigation buttons */
+        .date-navigation {
+            margin: 0.6rem 0;
+            display: flex;
+            gap: 0.25rem;
+            justify-content: center;
+        }
+
         .nav-btn {
-            padding: 0.4rem 0.6rem;
-            background: #0f3460;
-            border: 1px solid #667eea;
-            border-radius: 4px;
-            color: #eee;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            min-width: 35px;
-        }
-
-        .nav-btn:hover {
-            background: #667eea;
-            border-color: #764ba2;
-            transform: translateY(-1px);
-        }
-
-        .nav-btn:active {
-            transform: translateY(0);
+            padding: 0.35rem 0.55rem;
+            font-size: 0.8rem;
+            min-width: 34px;
         }
 
         /* Date shortcuts */
         .date-shortcuts {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-            margin-top: 0.75rem;
+            gap: 0.4rem;
+            margin-top: 0.5rem;
         }
 
         .shortcut-btn {
-            padding: 0.5rem;
-            background: #0f3460;
-            border: 1px solid #667eea;
-            border-radius: 4px;
-            color: #eee;
+            padding: 0.45rem;
             font-size: 0.75rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
         }
 
-        .shortcut-btn:hover {
-            background: #667eea;
-            border-color: #764ba2;
-        }
-
-        /* Location display */
-        #location-display {
-            background: #0f3460;
-            padding: 0.75rem;
-            border-radius: 4px;
-            border: 1px solid #667eea;
-            margin-bottom: 0.75rem;
+        /* Cards: the site's ink-outline card with an offset shadow */
+        #location-display,
+        #info-panel {
+            background: var(--surface);
+            padding: 0.8rem 0.9rem;
+            border-radius: 10px;
+            border: 2px solid var(--card-border);
+            box-shadow: 3px 3px 0 var(--card-shadow-c);
+            margin-right: 3px;
         }
 
         .location-coords {
             font-size: 0.85rem;
-            color: #aaa;
-            margin-top: 0.25rem;
+            color: var(--text-muted-c);
+            margin-top: 0.2rem;
+            font-variant-numeric: tabular-nums;
         }
 
         .location-name {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #eee;
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-c);
         }
 
         .location-status {
             margin-top: 0.5rem;
             padding: 0.5rem;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 0.78rem;
             line-height: 1.35;
-            color: #fff4d6;
-            background: rgba(255, 193, 7, 0.15);
-            border: 1px solid rgba(255, 193, 7, 0.55);
+            color: #6b4a00;
+            background: rgba(255, 193, 7, 0.14);
+            border: 1px solid rgba(183, 121, 31, 0.55);
         }
 
         .location-status.error {
-            color: #ffe1e1;
-            background: rgba(244, 67, 54, 0.15);
-            border-color: rgba(244, 67, 54, 0.6);
+            color: var(--red-deep);
+            background: rgba(220, 49, 39, 0.08);
+            border-color: rgba(220, 49, 39, 0.5);
+        }
+
+        [data-theme='dark'] .location-status {
+            color: #ffe6a8;
+        }
+
+        [data-theme='dark'] .location-status.error {
+            color: #ffd0cc;
         }
 
         .location-status[hidden] {
@@ -360,37 +515,32 @@
             margin-top: 0.5rem;
             font-size: 0.68rem;
             line-height: 1.35;
-            color: #aaa;
+            color: var(--text-muted-c);
         }
 
         .location-attribution a {
-            color: #aab8ff;
+            color: inherit;
         }
 
         /* Date picker */
         #date-picker {
             width: 100%;
-            padding: 0.6rem;
-            background: #0f3460;
-            border: 1px solid #667eea;
-            border-radius: 4px;
-            color: #eee;
+            padding: 0.55rem 0.75rem;
+            background: var(--surface);
+            border: 2px solid var(--card-border);
+            border-radius: 10px;
+            color: var(--text-c);
+            font-family: inherit;
             font-size: 0.9rem;
+            font-weight: 600;
         }
 
         /* Info panel */
-        #info-panel {
-            background: #0f3460;
-            padding: 0.75rem;
-            border-radius: 4px;
-            border: 1px solid #667eea;
-        }
-
         .info-row {
             display: flex;
             justify-content: space-between;
             padding: 0.4rem 0;
-            border-bottom: 1px solid #1a1a2e;
+            border-bottom: 1px solid var(--border-c);
         }
 
         .info-row:last-child {
@@ -398,22 +548,23 @@
         }
 
         .info-label {
-            color: #aaa;
+            color: var(--text-muted-c);
             font-size: 0.8rem;
         }
 
         .info-value {
-            color: #eee;
-            font-weight: 600;
+            color: var(--text-c);
+            font-weight: 700;
             font-size: 0.8rem;
+            font-variant-numeric: tabular-nums;
         }
 
         .info-value.sun-up {
-            color: #FFD700;
+            color: #B7791F;
         }
 
         .info-value.sun-down {
-            color: #666;
+            color: var(--text-muted-c);
         }
 
         /* Loading */
@@ -422,16 +573,19 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9);
+            background: var(--surface);
+            color: var(--text-c);
+            border: 2px solid var(--card-border);
+            box-shadow: 4px 4px 0 var(--card-shadow-c);
             padding: 2rem 3rem;
-            border-radius: 8px;
+            border-radius: 12px;
             text-align: center;
             z-index: 9999;
         }
 
         .spinner {
-            border: 3px solid #1a1a2e;
-            border-top: 3px solid #667eea;
+            border: 3px solid var(--border-c);
+            border-top: 3px solid var(--red-deep);
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -444,14 +598,145 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Explainer below the app: crawlable prose in the notes layout */
+        #about {
+            background: var(--bg);
+            border-top: 2px solid var(--ink);
+            padding: 3.5rem 1.5rem 2.5rem;
+        }
+
+        [data-theme='dark'] #about {
+            border-top-color: var(--border-c);
+        }
+
+        .about-inner {
+            max-width: 720px;
+            margin: 0 auto;
+            line-height: 1.65;
+        }
+
+        .about-eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--accent-c);
+            margin-bottom: 0.75rem;
+        }
+
+        .about-eyebrow::before {
+            content: '';
+            width: 1.6rem;
+            height: 2px;
+            background: currentColor;
+        }
+
+        #about h2 {
+            font-family: var(--font-display);
+            font-size: clamp(1.7rem, 4vw, 2.3rem);
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+        }
+
+        #about h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            margin: 2rem 0 0.6rem;
+        }
+
+        #about p,
+        #about ul,
+        #about ol {
+            margin-bottom: 1rem;
+        }
+
+        #about ul,
+        #about ol {
+            padding-left: 1.3rem;
+        }
+
+        #about li {
+            margin-bottom: 0.35rem;
+        }
+
+        #about dt {
+            font-weight: 700;
+            margin-top: 0.9rem;
+        }
+
+        #about dd {
+            margin: 0.2rem 0 0;
+            color: var(--text-muted-c);
+        }
+
+        #site-footer {
+            border-top: 1px solid var(--border-c);
+            padding: 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-muted-c);
+        }
+
+        #site-footer a {
+            color: inherit;
+        }
+
+        @media (max-width: 520px) {
+            /* The panel's timeline carries the time on small screens. */
+            #current-time-display {
+                display: none;
+            }
+        }
+
+        .panel-about-link {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--accent-c);
+        }
+
+        @media (max-width: 1100px) {
+            .site-links {
+                display: none;
+            }
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
+            #header {
+                height: auto;
+                padding: 0.5rem 1rem;
+            }
+            #header-left {
+                flex-direction: column;
+                gap: 0.1rem;
+                flex: 1 1 auto;
+            }
+            h1 {
+                padding-left: 0;
+                border-left: none;
+                font-size: 1.05rem;
+            }
+            .site-wordmark {
+                font-size: 0.8rem;
+                font-weight: 600;
+                opacity: 0.85;
+            }
+            #current-time-display {
+                font-size: 0.8rem;
+                text-align: right;
+            }
             #main-content {
                 flex-direction: column;
             }
             #control-panel {
                 width: 100%;
                 max-height: 45vh;
+                box-shadow: 0 -2px 0 var(--ink);
             }
             .date-navigation {
                 flex-wrap: wrap;
@@ -493,20 +778,28 @@
 <body>
     <div id="app-container">
         <!-- Header -->
-        <div id="header">
-            <h1>🌞 Sun Simulator</h1>
+        <header id="header">
+            <div id="header-left">
+                <a class="site-wordmark" href="https://jedarden.com/">Jed Arden</a>
+                <h1>Sun Path &amp; Shadow Simulator</h1>
+            </div>
             <div id="header-right">
+                <nav class="site-links" aria-label="jedarden.com">
+                    <a href="https://jedarden.com/notes/">Notes</a>
+                    <a href="https://jedarden.com/projects/">Projects</a>
+                    <a href="https://jedarden.com/demos/">Demos</a>
+                </nav>
                 <div id="current-time-display">Loading...</div>
-                <a href="https://github.com/jedarden/sun-sim" target="_blank" rel="noopener noreferrer" class="github-link" title="View on GitHub">
-                    <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                <a href="https://github.com/jedarden/sun-sim" target="_blank" rel="noopener noreferrer" class="github-link" title="View the source on GitHub" aria-label="View the source on GitHub">
+                    <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
                     </svg>
                 </a>
             </div>
-        </div>
+        </header>
 
         <!-- Main Content -->
-        <div id="main-content">
+        <main id="main-content">
             <!-- Map -->
             <div id="map-container">
                 <div id="map"></div>
@@ -517,7 +810,7 @@
             <div id="control-panel">
                 <!-- Location -->
                 <div class="control-section">
-                    <h3>📍 Location</h3>
+                    <h3>Location</h3>
                     <div id="location-display">
                         <div class="location-name">New York City</div>
                         <div class="location-coords">40.7128°N, 74.0060°W</div>
@@ -526,7 +819,7 @@
                             Reverse geocoding by <a href="https://nominatim.openstreetmap.org/" target="_blank" rel="noopener noreferrer">Nominatim</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>
                         </div>
                     <button class="gps-btn" id="btn-use-gps" title="Use my current location">
-                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                             <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
                         </svg>
                         <span id="gps-btn-text">Use My Location</span>
@@ -536,31 +829,31 @@
 
                 <!-- Date -->
                 <div class="control-section">
-                    <h3>📅 Date</h3>
-                    <input type="text" id="date-picker" placeholder="Select date">
+                    <h3>Date</h3>
+                    <input type="text" id="date-picker" placeholder="Select date" aria-label="Date">
 
                     <!-- Date Navigation -->
-                    <div class="date-navigation" style="margin: 0.5rem 0; display: flex; gap: 0.25rem; justify-content: center;">
-                        <button class="nav-btn" id="btn-prev-month" title="Previous Month (Left Arrow)">◀◀</button>
-                        <button class="nav-btn" id="btn-prev-week" title="Previous Week (Shift+Left)">◀</button>
-                        <button class="nav-btn" id="btn-prev-day" title="Previous Day (Down Arrow)">◂</button>
-                        <button class="nav-btn" id="btn-today" title="Today (T)">📅 Today</button>
-                        <button class="nav-btn" id="btn-next-day" title="Next Day (Up Arrow)">▸</button>
-                        <button class="nav-btn" id="btn-next-week" title="Next Week (Shift+Right)">▶</button>
-                        <button class="nav-btn" id="btn-next-month" title="Next Month (Right Arrow)">▶▶</button>
+                    <div class="date-navigation">
+                        <button class="nav-btn" id="btn-prev-month" title="Previous Month (Left Arrow)" aria-label="Previous month">◀◀</button>
+                        <button class="nav-btn" id="btn-prev-week" title="Previous Week (Shift+Left)" aria-label="Previous week">◀</button>
+                        <button class="nav-btn" id="btn-prev-day" title="Previous Day (Down Arrow)" aria-label="Previous day">◂</button>
+                        <button class="nav-btn" id="btn-today" title="Today (T)">Today</button>
+                        <button class="nav-btn" id="btn-next-day" title="Next Day (Up Arrow)" aria-label="Next day">▸</button>
+                        <button class="nav-btn" id="btn-next-week" title="Next Week (Shift+Right)" aria-label="Next week">▶</button>
+                        <button class="nav-btn" id="btn-next-month" title="Next Month (Right Arrow)" aria-label="Next month">▶▶</button>
                     </div>
 
                     <div class="date-shortcuts">
-                        <div class="shortcut-btn" data-date="summer-solstice">☀️ Summer Sol.</div>
-                        <div class="shortcut-btn" data-date="winter-solstice">❄️ Winter Sol.</div>
-                        <div class="shortcut-btn" data-date="spring-equinox">🌸 Spring Eq.</div>
-                        <div class="shortcut-btn" data-date="fall-equinox">🍂 Fall Eq.</div>
+                        <div class="shortcut-btn" data-date="summer-solstice">Summer solstice</div>
+                        <div class="shortcut-btn" data-date="winter-solstice">Winter solstice</div>
+                        <div class="shortcut-btn" data-date="spring-equinox">Spring equinox</div>
+                        <div class="shortcut-btn" data-date="fall-equinox">Fall equinox</div>
                     </div>
                 </div>
 
                 <!-- Timeline -->
                 <div class="control-section">
-                    <h3>⏰ Time of Day</h3>
+                    <h3>Time of Day</h3>
                     <div id="timeline-container">
                         <canvas id="timeline-canvas" width="288" height="60"></canvas>
                         <div class="time-labels">
@@ -590,7 +883,7 @@
 
                 <!-- Sun Info -->
                 <div class="control-section">
-                    <h3>☀️ Sun Information</h3>
+                    <h3>Sun Information</h3>
                     <div id="info-panel">
                         <div class="info-row">
                             <span class="info-label">Azimuth</span>
@@ -618,20 +911,78 @@
                         </div>
                     </div>
                 </div>
+
+                <a class="panel-about-link" href="#about">How it works, and what the lines mean ↓</a>
             </div>
-        </div>
+        </main>
     </div>
+
+    <!-- Explainer: what the simulator shows and how to read it -->
+    <section id="about" aria-labelledby="about-title">
+        <div class="about-inner">
+            <div class="about-eyebrow">How it works</div>
+            <h2 id="about-title">See where the sun will be, anywhere, on any day</h2>
+            <p>This sun path simulator puts a compass ring over a satellite map of any place on Earth and shows the sun's direction on it. Pick a location and a date to see where the sun rises and sets, when solar noon falls, how long the day lasts, and where the sun sits at any moment. Drag the timeline or press play to watch it sweep across the sky.</p>
+            <p>It's useful when light and shade matter: deciding where a garden bed gets full sun, checking which windows get morning or afternoon light before you rent or buy, lining up a photo at golden hour, or seeing how much lower the winter sun rides than the summer one.</p>
+
+            <h3>Reading the map</h3>
+            <ul>
+                <li><strong>Orange line:</strong> the sunrise bearing, the direction the sun first appears over the horizon.</li>
+                <li><strong>Red line:</strong> the sunset bearing, where it disappears.</li>
+                <li><strong>Gold dot and dashed line:</strong> the sun's direction (azimuth) at the selected time, drawn while the sun is above the horizon. Its height (altitude) is in the Sun Information panel, which shows a negative altitude at night.</li>
+            </ul>
+
+            <h3>How to use it</h3>
+            <ol>
+                <li>Pan and zoom the map to your spot, or press <em>Use My Location</em>.</li>
+                <li>Choose a date. The solstice and equinox shortcuts jump to the longest, shortest and in-between days of the year.</li>
+                <li>Drag across the timeline, or press <em>Play</em> for a time-lapse at 1×, 30×, 60× or two simulated minutes per frame.</li>
+                <li>Keyboard: <kbd>↑</kbd>/<kbd>↓</kbd> step a day, <kbd>←</kbd>/<kbd>→</kbd> a month (with <kbd>Shift</kbd>, a week), <kbd>T</kbd> returns to today, and <kbd>Space</kbd> plays or pauses.</li>
+            </ol>
+
+            <h3>Terms</h3>
+            <dl>
+                <dt>Azimuth</dt>
+                <dd>The sun's compass direction, in degrees clockwise from true north: 90° is east, 180° south, 270° west.</dd>
+                <dt>Altitude</dt>
+                <dd>The sun's height above the horizon, in degrees. 0° is the horizon and 90° is directly overhead.</dd>
+                <dt>Solar noon</dt>
+                <dd>The moment the sun reaches its highest point of the day. It rarely falls at exactly 12:00 on the clock.</dd>
+                <dt>Solstices and equinoxes</dt>
+                <dd>The solstices are the longest and shortest days of the year. At the equinoxes, day and night are nearly equal and the sun rises almost due east and sets almost due west.</dd>
+            </dl>
+
+            <h3>How it's calculated</h3>
+            <p>Sun positions come from the open-source <a href="https://github.com/mourner/suncalc">SunCalc</a> library's astronomical formulas, evaluated in your browser for the chosen coordinates and date. They're accurate to a fraction of a degree, which is plenty for planning around light and shade. They don't account for terrain or buildings on the horizon, so real sunrise can come later behind a hill or a tall building. Imagery is Esri World Imagery; place names come from OpenStreetMap's Nominatim service.</p>
+        </div>
+    </section>
+
+    <footer id="site-footer">
+        Built by <a href="https://jedarden.com/">Jed Arden</a> · <a href="https://jedarden.com/demos/">More demos</a> · <a href="https://github.com/jedarden/sun-sim">Source on GitHub</a>
+    </footer>
 
     <!-- Loading -->
     <div id="loading" style="display: none;">
         <div class="spinner"></div>
-        <div>Loading Sun Simulator...</div>
+        <div>Loading the sun simulator…</div>
     </div>
 
+    <!-- Feedback toolbar, gated on ?feedback=1 exactly as on jedarden.com:
+         under the proxy /toolbar.js resolves to that site's Agentation build. -->
+    <script>
+        (function () {
+            if (location.search.includes('feedback=1')) {
+                const s = document.createElement('script');
+                s.src = '/toolbar.js';
+                document.body.appendChild(s);
+            }
+        })();
+    </script>
+
     <!-- Libraries -->
-    <script src="/vendor/leaflet.js?v=1"></script>
-    <script src="/vendor/suncalc.min.js?v=1"></script>
-    <script src="/vendor/flatpickr.min.js?v=1"></script>
+    <script src="vendor/leaflet.js?v=1"></script>
+    <script src="vendor/suncalc.min.js?v=1"></script>
+    <script src="vendor/flatpickr.min.js?v=1"></script>
 
     <script>
         console.log('🌞 Sun Simulator Starting...');
