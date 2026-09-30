@@ -27,7 +27,7 @@ persistent map/geocoding cache.
 > [`public/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/public/sun-simulator/)
 > and maintained tests are in
 > [`tests/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/).
-> The Docker/GHCR image, `docker-compose.yml`, `serve.py`, old CI, and
+> The Docker/GHCR image, `docker-compose.yml`, `serve.py`, and
 > `sunsim.jedarden.com` deployment described by older passages are historical,
 > not current architecture or contributor instructions.
 
@@ -818,10 +818,14 @@ const API = {
 
 ## 7. Testing Strategy
 
-The shipped verification command is `npm test`, which runs Playwright against the
-static app. No Vitest, Testing Library, coverage-threshold, or unit-test setup is
-shipped. The remainder of this section is a proposed expansion, not a description
-of current tests.
+The maintained verification commands live in the jedarden.com repository. From
+that checkout, `npm run test:sun-simulator` runs the Chromium Playwright matrix
+from `tests/sun-simulator/` using its dedicated config and static servers. The
+source, build, and served-output contracts run with `npm run build && npm test`.
+The full matrix and the opt-in deployed availability check are documented in
+[`docs/notes/testing.md`](notes/testing.md). The remainder of this section is a
+historical/proposed test-pyramid sketch, not a complete description of current
+tests.
 
 ### 7.1 Proposed Test Pyramid
 
@@ -1396,13 +1400,12 @@ a service worker must not be represented as blanket permission to bundle or
 export the imagery. Until those pieces exist, the supported contract is local
 calculations after a successful load, not full offline operation.
 
-### 11.5 Retired Container and CI Paths
+### 11.5 Retired Container and Hostname Paths
 
 The pre-move deployment used a Docker image, a GHCR publication path, and
-repository-local `docker-compose.yml`/`serve.py` run instructions. Older
-documentation also referenced CI workflows and the `sunsim.jedarden.com`
-hostname. Those paths were retired with this repository on 2026-09-27 and
-must not be used for new changes. Contributors should work in
+repository-local `docker-compose.yml`/`serve.py` run instructions and the
+`sunsim.jedarden.com` hostname. Those paths were retired with this repository
+on 2026-09-27 and must not be used for new changes. Contributors should work in
 `jedarden.com/public/sun-simulator/` and
 `jedarden.com/tests/sun-simulator/` instead.
 

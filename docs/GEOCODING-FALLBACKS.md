@@ -121,8 +121,10 @@ refresh while offline is not supported.
 
 ## Verification
 
-`tests/geolocation-fallbacks.spec.js` mocks the browser Geolocation API and
-Nominatim responses. It covers permission denial, unavailable positions,
+The maintained
+[`tests/sun-simulator/geolocation-fallbacks.spec.js`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/geolocation-fallbacks.spec.js)
+mocks the browser Geolocation API and Nominatim responses. It covers
+permission denial, unavailable positions,
 abort-error handling, rate limiting, no-result responses, rapid map movement,
 request coalescing, one-second request spacing, latest-location protection, and
 cache behavior, asserting that the status, attribution, fallback name, and

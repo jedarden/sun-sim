@@ -3,7 +3,7 @@
 > **Moved (2026-09-27).** The simulator now lives in the jedarden.com repo as a
 > static page and is served at **https://jedarden.com/sun-simulator/**;
 > `sunsim.jedarden.com` redirects there. This repository is a read-only
-> record: its container, image build and CI are retired, and its open beads
+> record: its container and image build are retired, and its open beads
 > were migrated to jedarden.com's store. Make changes in jedarden.com under
 > [`public/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/public/sun-simulator/)
 > (tests in
@@ -11,7 +11,7 @@
 
 Interactive web application for visualizing sun position, sunrise/sunset times, and solar paths for any location and date/time.
 
-**Timezone behavior:** Solar calculations use absolute instants and the selected coordinates, while all displayed dates and clock times use the browser's local timezone. Selecting a location does not switch the display to that location's timezone or to UTC; DST, UTC date boundaries, and the date line are covered by `tests/timezone.spec.js`.
+**Timezone behavior:** Solar calculations use absolute instants and the selected coordinates, while displayed dates and clock times use the selected location's timezone. DST, UTC date boundaries, the date line, and open-ocean timezone lookup are covered by the maintained [`timezone.spec.js`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/timezone.spec.js).
 
 **Live:** [jedarden.com/sun-simulator](https://jedarden.com/sun-simulator/)
 
@@ -58,6 +58,12 @@ This checkout is archival. The maintained page is
 in the jedarden.com repository, and its maintained Playwright coverage is in
 [`tests/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/).
 Use those paths for implementation changes and test changes.
+
+Run the maintained browser matrix from the jedarden.com checkout with
+`npm run test:sun-simulator`. The static-page, build, served-output, and
+deployed-availability contracts are documented in
+[`docs/notes/testing.md`](docs/notes/testing.md); the corresponding source
+checks live beside the migrated tests in jedarden.com.
 
 ## 🗃️ Historical local-run instructions (retired 2026-09-27)
 
@@ -188,12 +194,11 @@ before disconnecting.
 
 ## 🗃️ Historical releases and deployment (retired 2026-09-27)
 
-Before the move, `VERSION`, the `sun-sim-build` Argo Workflow, the GHCR image,
-and the old deployment configuration described this repository's release path.
-Earlier documentation also referred to GitHub Actions CI. Those container,
-GHCR, `docker-compose`, `serve.py`, CI, and `sunsim.jedarden.com` instructions
-are historical; this repository no longer has a deployment path. The live page
-and its contributor workflow are in the jedarden.com paths linked above.
+Before the move, `VERSION`, the GHCR image, and the old deployment
+configuration described this repository's release path. Those container,
+GHCR, `docker-compose`, `serve.py`, and `sunsim.jedarden.com` instructions are
+historical; this repository no longer has a deployment path. The live page and
+its contributor workflow are in the jedarden.com paths linked above.
 
 ---
 
@@ -218,18 +223,19 @@ and its contributor workflow are in the jedarden.com paths linked above.
 | 📦 Bundle Size | ~11KB (gzipped) |
 | 🎬 Frame Rate | 58–60 FPS in the repeatable rendering check; p95 frame time ≤20ms |
 
-The accuracy figures are fixture-validated bounds for the locations and dates in `tests/fixtures/solar-references.json`; they are not guarantees for every coordinate, date, or atmospheric condition. The position fixture checks the unrounded SunCalc result, while the UI displays angles to one decimal place.
+The accuracy figures are fixture-validated bounds for the locations and dates in
+the maintained
+[`tests/sun-simulator/fixtures/solar-references.json`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/fixtures/solar-references.json);
+they are not guarantees for every coordinate, date, or atmospheric condition.
+The position fixture checks the unrounded SunCalc result, while the UI displays
+angles to one decimal place.
 
-The historical rendering check is in `tests/performance.spec.js` in this
-checkout. The maintained copy is in
-[`tests/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/)
-in the jedarden.com repository. The archived check sampled native
-`requestAnimationFrame` timing after warm-up at 1280×720 and 390×844 with a
-device-pixel ratio of 1, mocking map tiles and reverse geocoding for
-repeatability. A reference run in headless Chromium 151.0.7922.173 on
-2026-09-23 passed all 8 cases at 58–60 FPS with p95 intervals of 16.7–16.8ms,
-and an independent repeat run the same day reproduced 60.0 FPS on every case
-with p95 intervals of 16.7–16.8ms.
+The maintained rendering check is
+[`tests/sun-simulator/performance.spec.js`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/performance.spec.js).
+It samples native `requestAnimationFrame` timing after warm-up at 1280×720 and
+390×844 with a device-pixel ratio of 1, mocking map tiles and reverse
+geocoding for repeatability. See [the testing matrix](docs/notes/testing.md)
+for the current command and budget.
 
 ---
 
