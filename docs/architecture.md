@@ -2,8 +2,8 @@
 
 **Version:** 1.0.0
 **Date:** 2025-11-14
-**Last service contract reconciliation:** 2026-09-23
-**Status:** Draft (mixed as-built contract and future design)
+**Last service contract reconciliation:** 2026-09-27
+**Status:** Historical record (mixed as-built contract and future design)
 **Author:** System Architecture Designer
 
 ## Executive Summary
@@ -21,6 +21,15 @@ persistent map/geocoding cache.
 > trees, Web Components, storage services, date-fns, build tooling, workers,
 > monitoring, deployment steps, and pseudocode are proposals rather than current
 > runtime facts unless a passage explicitly says otherwise.
+
+> **Repository retirement:** The simulator moved to the jedarden.com repository
+> on 2026-09-27. Maintained source is in
+> [`public/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/public/sun-simulator/)
+> and maintained tests are in
+> [`tests/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/).
+> The Docker/GHCR image, `docker-compose.yml`, `serve.py`, old CI, and
+> `sunsim.jedarden.com` deployment described by older passages are historical,
+> not current architecture or contributor instructions.
 
 ## 1. System Overview
 
@@ -1321,19 +1330,23 @@ class A11yAnnouncer {
 announcer.announce('Sun position updated: altitude 45 degrees, azimuth 180 degrees');
 ```
 
-## 11. Deployment Architecture
+## 11. Historical Deployment Architecture (retired 2026-09-27)
 
-### 11.1 Current Static Hosting
+### 11.1 Historical Static Hosting
+
+The following describes the pre-move checkout only. It is retained to explain
+the archived files; it is not a supported way to run or deploy the simulator.
 
 ```text
-Document root: repository root
+Document root: repository root (before retirement)
 Entry point: index.html
 Build step: none
-Built-in command: python3 serve.py [port]
-Alternative: any static HTTP server or the Docker image
+Built-in command: python3 serve.py [port] (retired)
+Alternative: any static HTTP server or the Docker image (retired)
 ```
 
-The shipped package scripts do not define a production build.
+The archived package scripts did not define a production build. The maintained
+page is now served by jedarden.com from `public/sun-simulator/`.
 
 ### 11.2 Proposed CDN Strategy
 
@@ -1353,10 +1366,10 @@ export default {
 };
 ```
 
-### 11.3 Caching Strategy
+### 11.3 Historical Caching Strategy
 
 ```text
-Built-in Python server:
+Retired built-in Python server:
   HTML:          no-cache, no-store
   /vendor/:      max-age=31536000, immutable
 
@@ -1382,6 +1395,16 @@ for the intended offline/export use. Caching ordinary World Imagery requests in
 a service worker must not be represented as blanket permission to bundle or
 export the imagery. Until those pieces exist, the supported contract is local
 calculations after a successful load, not full offline operation.
+
+### 11.5 Retired Container and CI Paths
+
+The pre-move deployment used a Docker image, a GHCR publication path, and
+repository-local `docker-compose.yml`/`serve.py` run instructions. Older
+documentation also referenced CI workflows and the `sunsim.jedarden.com`
+hostname. Those paths were retired with this repository on 2026-09-27 and
+must not be used for new changes. Contributors should work in
+`jedarden.com/public/sun-simulator/` and
+`jedarden.com/tests/sun-simulator/` instead.
 
 ## 12. Proposed Monitoring and Analytics
 
@@ -1665,9 +1688,11 @@ development dependency.
 
 **Appendix B: Proposed File Structure (Not Shipped)**
 
-The tree below is a future modularization target. The current implementation is
-`index.html`, `serve.py`, vendored assets, and Playwright tests at the repository
-root.
+The tree below is a future modularization target. The pre-move implementation
+was `index.html`, `serve.py`, vendored assets, and Playwright tests at the
+repository root. The maintained implementation is now in
+`jedarden.com/public/sun-simulator/`, with tests in
+`jedarden.com/tests/sun-simulator/`.
 
 ```
 sun-simulator/
@@ -1792,7 +1817,7 @@ sun-simulator/
 │   ├── eslint.config.js
 │   └── prettier.config.js
 │
-├── .github/
+├── .github/                    # proposed structure; old CI is retired
 │   └── workflows/
 │       ├── ci.yml
 │       └── deploy.yml
@@ -1808,7 +1833,7 @@ sun-simulator/
 
 **Document Metadata:**
 - **Version:** 1.0.0
-- **Last Updated:** 2026-09-23
+- **Last Updated:** 2026-09-27
 - **Author:** System Architecture Designer
-- **Status:** Draft (mixed as-built contract and future design)
+- **Status:** Historical record (mixed as-built contract and future design)
 - **Next Step:** Validate the proposed future-design sections separately

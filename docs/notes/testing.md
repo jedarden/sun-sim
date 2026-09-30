@@ -1,8 +1,17 @@
 # Testing Documentation
 
+> **Historical test guide — retired 2026-09-27.** The maintained simulator is
+> in jedarden.com's
+> [`public/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/public/sun-simulator/)
+> path, and its maintained Playwright coverage is in
+> [`tests/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/).
+> The Docker/GHCR image, `docker-compose.yml`, `serve.py`, old CI, and
+> `sunsim.jedarden.com` instructions are retired. Commands below target this
+> read-only pre-move checkout and are retained only as test-history notes.
+
 ## Overview
 
-The repository has eight complementary Playwright suites:
+The retired repository had eight complementary Playwright suites:
 
 - `tests/solar-reference.spec.js` checks the vendored SunCalc results against fixed U.S. Naval Observatory (USNO) reference fixtures.
 - `tests/solar-calculations.spec.js` provides broader smoke coverage for equinox, seasonal, and polar UI states.
@@ -15,7 +24,7 @@ The repository has eight complementary Playwright suites:
 
 The reference suite is the accuracy contract. Its cases cover Quito at the equinox, New York and London near the June solstice, Sydney near the December solstice, and Tromsø during midnight sun and polar night. Each case includes coordinates, an exact UTC instant, solar altitude and true-north azimuth, sunrise, solar noon, sunset, and day length where applicable.
 
-## Running Tests
+## Historical test workflow (pre-move)
 
 `npm test` is self-contained: `scripts/test.js` installs dependencies from
 `package-lock.json` when `node_modules` is missing and then invokes the locally

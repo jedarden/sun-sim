@@ -5,7 +5,9 @@
 > `sunsim.jedarden.com` redirects there. This repository is a read-only
 > record: its container, image build and CI are retired, and its open beads
 > were migrated to jedarden.com's store. Make changes in jedarden.com under
-> `public/sun-simulator/` (tests in `tests/sun-simulator/`).
+> [`public/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/public/sun-simulator/)
+> (tests in
+> [`tests/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/)).
 
 Interactive web application for visualizing sun position, sunrise/sunset times, and solar paths for any location and date/time.
 
@@ -49,57 +51,46 @@ Interactive web application for visualizing sun position, sunrise/sunset times, 
 
 ---
 
-## 🚀 Quick Start
+## 🧭 Current source and contribution
 
-### Option 1: Docker from GitHub Container Registry (Easiest)
+This checkout is archival. The maintained page is
+[`public/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/public/sun-simulator/)
+in the jedarden.com repository, and its maintained Playwright coverage is in
+[`tests/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/).
+Use those paths for implementation changes and test changes.
+
+## 🗃️ Historical local-run instructions (retired 2026-09-27)
+
+The commands below describe how this repository was run before the move. The
+Docker/GHCR image, `docker-compose.yml`, and `serve.py` are retained here only
+as historical artifacts; they are not supported deployment or contributor
+workflows.
+
+### Retired Docker/GHCR image
 
 ```bash
-# Pull and run the pre-built image
 docker pull ghcr.io/jedarden/sun-sim:0.1.15
 docker run -d -p 3000:3000 --name sun-sim ghcr.io/jedarden/sun-sim:0.1.15
 ```
 
-Access at: **http://localhost:3000**
-
-### Option 2: Docker Build Locally
+### Retired local Docker and `docker-compose` workflow
 
 ```bash
-# Build and run with Docker Compose
 docker-compose up -d
-
-# Or build and run manually
 docker build -t sun-simulator .
 docker run -p 3000:3000 sun-simulator
 ```
 
-Access at: **http://localhost:3000**
-
-### Option 3: Python Server (No Dependencies)
+### Retired `serve.py` workflow
 
 ```bash
-# Run the built-in Python server
 python3 serve.py
-
-# Or specify a custom port
 python3 serve.py 8080
 ```
 
-Access at: **http://localhost:3000** (or your custom port)
-
-### Option 4: Any HTTP Server
-
-The application is a static webpage, so you can use any web server:
-
-```bash
-# Node.js http-server
-npx http-server -p 3000
-
-# PHP built-in server
-php -S localhost:3000
-
-# Python
-python -m http.server 3000
-```
+These historical commands served the retired checkout at `localhost`; they do
+not deploy or update the live page. A generic static HTTP server was also a
+pre-move local-run option.
 
 ---
 
@@ -195,16 +186,14 @@ before disconnecting.
 
 ---
 
-## 🔄 Releases and deployment
+## 🗃️ Historical releases and deployment (retired 2026-09-27)
 
-`VERSION` records the image version. The `sun-sim-build` Argo Workflow on
-`iad-ci` builds and publishes the pinned GHCR image; GitHub Actions is not used
-for this repository. The production deployment is managed through the public
-[`jedarden/declarative-config`](https://github.com/jedarden/declarative-config)
-GitOps repository.
-
-The application itself is static, so a source checkout can also be served by
-any static host using the commands in Quick Start.
+Before the move, `VERSION`, the `sun-sim-build` Argo Workflow, the GHCR image,
+and the old deployment configuration described this repository's release path.
+Earlier documentation also referred to GitHub Actions CI. Those container,
+GHCR, `docker-compose`, `serve.py`, CI, and `sunsim.jedarden.com` instructions
+are historical; this repository no longer has a deployment path. The live page
+and its contributor workflow are in the jedarden.com paths linked above.
 
 ---
 
@@ -231,7 +220,16 @@ any static host using the commands in Quick Start.
 
 The accuracy figures are fixture-validated bounds for the locations and dates in `tests/fixtures/solar-references.json`; they are not guarantees for every coordinate, date, or atmospheric condition. The position fixture checks the unrounded SunCalc result, while the UI displays angles to one decimal place.
 
-The rendering check is in `tests/performance.spec.js` and can be run with `npm run test:performance`. It samples native `requestAnimationFrame` timing after warm-up at 1280×720 and 390×844 with a device-pixel ratio of 1, mocking map tiles and reverse geocoding for repeatability. It covers map overlay updates, sun-path redraws, mouse/touch timeline dragging, and animation. The budget is a p95 frame interval of at most 20ms and no more than 5% of frames over 20ms. A reference run in headless Chromium 151.0.7922.173 on 2026-09-23 passed all 8 cases at 58–60 FPS with p95 intervals of 16.7–16.8ms, and an independent repeat run the same day reproduced 60.0 FPS on every case with p95 intervals of 16.7–16.8ms.
+The historical rendering check is in `tests/performance.spec.js` in this
+checkout. The maintained copy is in
+[`tests/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/)
+in the jedarden.com repository. The archived check sampled native
+`requestAnimationFrame` timing after warm-up at 1280×720 and 390×844 with a
+device-pixel ratio of 1, mocking map tiles and reverse geocoding for
+repeatability. A reference run in headless Chromium 151.0.7922.173 on
+2026-09-23 passed all 8 cases at 58–60 FPS with p95 intervals of 16.7–16.8ms,
+and an independent repeat run the same day reproduced 60.0 FPS on every case
+with p95 intervals of 16.7–16.8ms.
 
 ---
 
@@ -261,15 +259,14 @@ MIT License - Free to use, modify, and distribute.
 
 ## 💬 Support
 
-For issues or questions:
-- 🐛 [Create an issue](https://github.com/jedarden/sun-sim/issues)
-- 📖 Check the [documentation](docs/)
-- ⭐ Star the repo if you find it useful!
+For current issues or questions, use the jedarden.com repository and the
+maintained source and test paths linked above. The issue tracker and docs in
+this checkout are retained for historical reference.
 
 ---
 
 <p align="center">
-  <strong>Status:</strong> Live | <strong>Release:</strong> 0.1.15 | <strong>External services:</strong> No API-key fees
+  <strong>Status:</strong> Archived after move | <strong>Release:</strong> historical 0.1.15 | <strong>External services:</strong> No API-key fees
 </p>
 
 <p align="center">
@@ -280,4 +277,6 @@ For issues or questions:
 
 Part of [jedarden.com](https://jedarden.com) · Read the write-up: [jedarden.com/projects/sunsim/](https://jedarden.com/projects/sunsim/)
 
-*This GitHub repo is a read-only mirror of git.ardenone.com/jedarden/sun-sim — issues and PRs are welcome here either way.*
+*This repository is a read-only historical record. The maintained simulator is
+in git.ardenone.com/jedarden/jedarden.com under `public/sun-simulator/`, with
+tests under `tests/sun-simulator/`.*

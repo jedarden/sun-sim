@@ -1,16 +1,23 @@
-# sun-sim — Plan
+# sun-sim — Historical Plan
 
-This file did not exist before 2026-07-20. It is being created now (not
-backfilled retroactively) to hold architecture decision records going
-forward, per this workspace's repo convention. It is not a rewrite of
-`docs/architecture.md` (the original, much more elaborate 2025-11-14 draft
-architecture document, which describes a larger tooling stack — Vite,
-Vitest, Playwright, Web Components — than what actually shipped: a single
-1207-line `index.html` with inlined CSS/JS, served by a 60-line
-`serve.py`). That gap is out of scope here; this doc starts from what the
-repo actually is today and records decisions from this point forward.
+> **Retired 2026-09-27.** This document records decisions made for the
+> pre-move `sun-sim` repository. The maintained simulator is now in
+> [`public/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/public/sun-simulator/)
+> in the jedarden.com repository, with tests in
+> [`tests/sun-simulator/`](https://git.ardenone.com/jedarden/jedarden.com/src/branch/main/tests/sun-simulator/).
+> Docker/GHCR, `docker-compose.yml`, `serve.py`, old CI, and
+> `sunsim.jedarden.com` references below are historical and must not be used as
+> current contributor or deployment instructions.
 
-## What this repo ships
+This file was created on 2026-07-20 to hold architecture decision records. It
+is not a rewrite of `docs/architecture.md` (the original, much more elaborate
+2025-11-14 draft architecture document, which described a larger tooling stack
+— Vite, Vitest, Playwright, Web Components — than what shipped: a single
+`index.html` with inlined CSS/JS, served by a small `serve.py`). It is retained
+as a historical record after the repository move rather than as an active
+implementation plan.
+
+## What this repo shipped before retirement
 
 A single-page, no-build, vanilla-JS interactive sun-position simulator
 (`index.html`), served as a static file by a tiny Python HTTP server
@@ -18,17 +25,19 @@ A single-page, no-build, vanilla-JS interactive sun-position simulator
 libraries are loaded from public CDNs at runtime: Leaflet (map), SunCalc
 (astronomical calculations), Flatpickr (date picker).
 
-**Live deployment:** `https://sunsim.jedarden.com` — confirmed reachable
-(HTTP 200, `2026-07-20`). Deployed on the `ardenone-cluster` Kubernetes
+**Historical live deployment:** `https://sunsim.jedarden.com` — confirmed
+reachable (HTTP 200, `2026-07-20`) before retirement. It was deployed on the
+`ardenone-cluster` Kubernetes
 cluster (`utilities` namespace) via
 `jedarden/declarative-config:k8s/ardenone-cluster/utilities/sun-sim-deployment.yml`,
 pinned to `ghcr.io/jedarden/sun-sim:0.1.3`, fronted by Traefik +
-Cloudflare Tunnel. CI currently runs via a GitHub Actions workflow
+Cloudflare Tunnel. Before retirement, CI ran via a GitHub Actions workflow
 (`.github/workflows/docker-publish.yml`) that auto-bumps `VERSION` and
 publishes to GHCR on every push touching `index.html`, `serve.py`,
 `Dockerfile`, or `docs/`; migration to Argo Workflows CI is tracked
 separately (see `bf-32z`, `bf-33d`, `bf-2bc`, `bf-4ke` — not duplicated
-here).
+here). The image, `docker-compose.yml`, `serve.py`, old CI, GHCR publication,
+and `sunsim.jedarden.com` deployment are all retired.
 
 ## ADR-001: 2026-07-20 — Vendor third-party JS/CSS assets into the image instead of loading them from public CDNs at runtime
 
