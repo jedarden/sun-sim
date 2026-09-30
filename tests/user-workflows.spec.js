@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const nominatimPattern = 'https://nominatim.openstreetmap.org/**';
 const mapTilePattern = 'https://server.arcgisonline.com/**';
+const canonicalRepositoryUrl = 'https://git.ardenone.com/jedarden/jedarden.com';
 
 async function installNetworkMocks(page) {
   await page.route(nominatimPattern, route => route.fulfill({
@@ -133,6 +134,10 @@ test.describe('Documented user workflows', () => {
     await expect(page.locator('.leaflet-control-attribution')).toContainText(
       'Tiles © Esri, Vantor, Earthstar Geographics, and the GIS User Community'
     );
+  });
+
+  test('links to the canonical Forgejo repository from the header', async ({ page }) => {
+    await expect(page.locator('.github-link')).toHaveAttribute('href', canonicalRepositoryUrl);
   });
 
   test('selects a location by dragging the map', async ({ page }) => {
