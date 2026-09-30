@@ -11,7 +11,7 @@
 
 ## Overview
 
-The retired repository had eight complementary Playwright suites:
+The retired repository had nine complementary Playwright suites:
 
 - `tests/solar-reference.spec.js` checks the vendored SunCalc results against fixed U.S. Naval Observatory (USNO) reference fixtures.
 - `tests/solar-calculations.spec.js` provides broader smoke coverage for equinox, seasonal, and polar UI states.
@@ -21,6 +21,7 @@ The retired repository had eight complementary Playwright suites:
 - `tests/visual-overlays.spec.js` provides screenshot baselines and functional assertions for compass orientation and labels, equinox and polar bearing states, marker visibility, redraw/resize behavior, the sun-path overlay, map repositioning, and the color-coded timeline.
 - `tests/performance.spec.js` measures native animation-frame cadence for map overlays, sun-path rendering, timeline dragging, and animation at desktop and mobile viewports.
 - `tests/mobile.spec.js` verifies the stacked mobile layout, 44px controls, touch map pan and zoom, touch-driven controls and timeline scrubbing, and canvas rendering across narrow mobile viewport sizes.
+- `tests/deployment-redirect.spec.js` checks the live legacy-domain deployment with redirects disabled: `https://sunsim.jedarden.com/` must return HTTP `301`, set the exact `Location` header to `https://jedarden.com/sun-simulator/`, and not serve the retired application HTML.
 
 The reference suite is the accuracy contract. Its cases cover Quito at the equinox, New York and London near the June solstice, Sydney near the December solstice, and Tromsø during midnight sun and polar night. Each case includes coordinates, an exact UTC instant, solar altitude and true-north azimuth, sunrise, solar noon, sunset, and day length where applicable.
 
@@ -44,6 +45,13 @@ Run the suite headlessly:
 
 ```bash
 npm test
+```
+
+The deployment regression check reaches the live legacy host and does not
+follow its redirect, so it requires network access. Run it directly with:
+
+```bash
+npx playwright test tests/deployment-redirect.spec.js
 ```
 
 Other Playwright modes are available through `npm run test:headed` and `npm run test:debug`.
